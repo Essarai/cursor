@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "cscd-reviewers": {
+      "command": "python",
+      "args": ["mcp_servers/reviewers.py"],
+      "cwd": "${workspaceFolder}/reviewer-agent",
+      "env": {
+        "CSCD_API_CODE": "${env:CSCD_API_CODE}"
+      }
+    },
+    "cscd-author-info": {
+      "command": "python",
+      "args": ["mcp_servers/author_info.py"],
+      "cwd": "${workspaceFolder}/reviewer-agent",
+      "env": {
+        "CSCD_API_CODE": "${env:CSCD_API_CODE}"
+      }
+    }
+  }
+}

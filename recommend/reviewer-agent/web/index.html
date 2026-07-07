@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSCD 审稿人推荐 Agent</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <header class="header">
+      <div class="header-inner">
+        <div>
+          <p class="eyebrow">CSCD Reviewer Agent</p>
+          <h1>审稿人推荐</h1>
+          <p class="subtitle">三阶段流水线：硬过滤 → 数据补全 → LLM 语义精筛</p>
+        </div>
+        <div class="status-pill" id="connectionStatus">
+          <span class="dot"></span>
+          <span>检测服务中…</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel form-panel">
+        <h2>论文信息</h2>
+        <form id="recommendForm">
+          <label>
+            <span>论文标题 <em>*</em></span>
+            <input
+              type="text"
+              name="title"
+              required
+              placeholder="例如：基于深度学习的医学图像分割研究"
+              value="基于深度学习的医学图像分割研究"
+            />
+          </label>
+
+          <label>
+            <span>关键词 <em>*</em></span>
+            <input
+              type="text"
+              name="keywords"
+              required
+              placeholder="逗号分隔，例如：医学图像,图像分割"
+              value="医学图像,图像分割"
+            />
+          </label>
+
+          <label>
+            <span>原作者机构</span>
+            <input
+              type="text"
+              name="author_org"
+              placeholder="填写后触发 COI 机构熔断"
+              value="浙江大学"
+            />
+          </label>
+
+          <label>
+            <span>补充说明</span>
+            <textarea
+              name="extra"
+              rows="3"
+              placeholder="可选：研究方向、期刊要求等"
+            ></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" id="submitBtn">开始推荐</button>
+            <button type="button" id="stopBtn" class="secondary" disabled>停止</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel output-panel">
+        <div class="output-header">
+          <h2>推荐过程</h2>
+          <div class="stage-tabs" id="stageTabs">
+            <button type="button" class="tab active" data-stage="all">全部</button>
+            <button type="button" class="tab" data-stage="stage1">阶段一</button>
+            <button type="button" class="tab" data-stage="stage2">阶段二</button>
+            <button type="button" class="tab" data-stage="stage3">阶段三</button>
+            <button type="button" class="tab" data-stage="result">结果</button>
+          </div>
+        </div>
+
+        <div class="timeline" id="timeline">
+          <article class="stage-card idle" data-stage="stage1">
+            <div class="stage-head">
+              <span class="stage-badge">1</span>
+              <div>
+                <h3>硬过滤与粗筛</h3>
+                <p class="stage-desc">召回专家 · COI 熔断 · 重合度最高档入选</p>
+              </div>
+              <span class="stage-state" id="stage1State">等待中</span>
+            </div>
+            <div class="stage-body" id="stage1Body">
+              <p class="placeholder">提交论文信息后开始…</p>
+            </div>
+          </article>
+
+          <article class="stage-card idle" data-stage="stage2">
+            <div class="stage-head">
+              <span class="stage-badge">2</span>
+              <div>
+                <h3>学者背景补全</h3>
+                <p class="stage-desc">发文统计 · activity_score</p>
+              </div>
+              <span class="stage-state" id="stage2State">等待中</span>
+            </div>
+            <div class="stage-body" id="stage2Body">
+              <p class="placeholder">等待阶段一完成…</p>
+            </div>
+          </article>
+
+          <article class="stage-card idle" data-stage="stage3">
+            <div class="stage-head">
+              <span class="stage-badge">3</span>
+              <div>
+                <h3>LLM 语义精筛</h3>
+                <p class="stage-desc">模型思考 · JSON 精筛</p>
+              </div>
+              <span class="stage-state" id="stage3State">等待中</span>
+            </div>
+            <div class="stage-body" id="stage3Body">
+              <p class="placeholder">等待阶段二完成…</p>
+            </div>
+          </article>
+
+          <article class="stage-card idle" data-stage="result">
+            <div class="stage-head">
+              <span class="stage-badge">✓</span>
+              <div>
+                <h3>推荐结果</h3>
+                <p class="stage-desc">3–5 位审稿人</p>
+              </div>
+              <span class="stage-state" id="resultState">等待中</span>
+            </div>
+            <div class="stage-body" id="resultBody">
+              <p class="placeholder">推荐完成后展示…</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
