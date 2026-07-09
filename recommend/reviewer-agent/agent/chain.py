@@ -261,7 +261,31 @@ def build_screening_chain(*, streaming: bool = False):
 
 
 def stream_semantic_screening(llm_payload: Dict[str, Any]) -> None:
-    """流式输出阶段三思考过程与精筛 JSON（NDJSON 事件）。"""
+    """流式输出阶段三思考过程与精筛结果（NDJSON 事件）。"""
+    mode = os.getenv("AGENT_STAGE3_MODE", "agent").strip().lower()
+    if mode == "agent":
+        try:
+            from agent.decision_agent import run_decision_agent
+
+            run_decision_agent(llm_payload)
+            return
+        except Exception as exc:
+            emit(
+                "stage3_thinking",
+                {
+                    "thinking": {
+                        "summary": (
+                            f"Agent 模式失败（{exc}），回退到 one-shot 精筛模式。"
+                        ),
+                    },
+                },
+            )
+
+    _stream_oneshot_screening(llm_payload)
+
+
+def _stream_oneshot_screening(llm_payload: Dict[str, Any]) -> None:
+    """单次 LLM JSON 精筛（原阶段三实现）。"""
     emit(
         "stage3_thinking",
         {
