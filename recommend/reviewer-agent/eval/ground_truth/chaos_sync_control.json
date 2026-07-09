@@ -1,0 +1,43 @@
+{
+  "case_id": "chaos-sync-control-001",
+  "description": "编辑最终采纳的审稿人（关键词：混沌系统;;同步控制）",
+  "paper": {
+    "title": "混沌系统同步控制研究",
+    "keywords": "混沌系统,同步控制",
+    "author_org": "",
+    "extra": "Ground truth 评测：跳过阶段一，直接进入阶段二/三"
+  },
+  "search_keywords": "混沌系统;;同步控制",
+  "accepted_reviewers": [
+    {
+      "author_id": "1588488",
+      "name": "陈向勇",
+      "org": "临沂大学",
+      "accepted": true
+    },
+    {
+      "author_id": "1295707",
+      "name": "高岩波",
+      "org": "南通大学",
+      "accepted": true
+    },
+    {
+      "author_id": "407333",
+      "name": "毛北行",
+      "org": "郑州航空工业管理学院",
+      "accepted": true
+    },
+    {
+      "author_id": "1469660",
+      "name": "臧鸿雁",
+      "org": "北京科技大学",
+      "accepted": true
+    },
+    {
+      "author_id": "1112859",
+      "name": "孙克辉",
+      "org": "中南大学",
+      "accepted": true
+    }
+  ]
+}

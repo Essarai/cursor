@@ -1,0 +1,637 @@
+{
+  "case_id": "chaos-sync-control-001",
+  "gt_path": "eval/ground_truth/chaos_sync_control.json",
+  "paper_keywords": [
+    "混沌系统",
+    "同步控制"
+  ],
+  "input_candidates": [
+    {
+      "author_id": "1588488",
+      "name": "陈向勇",
+      "org": "临沂大学",
+      "hindex": 1.0,
+      "research_keywords": [
+        "复变量混沌系统",
+        "多切换传输",
+        "有限时控制",
+        "组合同步",
+        "complex-variable chaotic system",
+        "multi-switching transmission",
+        "finite-time control",
+        "combination synchronization"
+      ]
+    },
+    {
+      "author_id": "1295707",
+      "name": "高岩波",
+      "org": "南通大学",
+      "hindex": 1.0,
+      "research_keywords": [
+        "混沌Lur'e系统",
+        "时变时滞",
+        "采样数据",
+        "指数同步",
+        "同步",
+        "采样数据控制",
+        "chaotic Lur'e system",
+        "time-varying delay"
+      ]
+    },
+    {
+      "author_id": "407333",
+      "name": "毛北行",
+      "org": "郑州航空工业管理学院",
+      "hindex": 4.0,
+      "research_keywords": [
+        "混沌同步",
+        "滑模",
+        "分数阶",
+        "自适应",
+        "同步",
+        "分数阶系统",
+        "混沌",
+        "滑模同步"
+      ]
+    },
+    {
+      "author_id": "1469660",
+      "name": "臧鸿雁",
+      "org": "北京科技大学",
+      "hindex": 2.0,
+      "research_keywords": [
+        "混沌系统",
+        "图像加密",
+        "均匀化",
+        "拓扑共轭",
+        "S盒",
+        "保密通信",
+        "广义混沌同步",
+        "平衡点"
+      ]
+    },
+    {
+      "author_id": "1112859",
+      "name": "孙克辉",
+      "org": "中南大学",
+      "hindex": 2.0,
+      "research_keywords": [
+        "分数阶微积分",
+        "混沌",
+        "忆阻器",
+        "超混沌",
+        "吸引子共存",
+        "扩频通信",
+        "简化Lorenz系统",
+        "微弱信号检测"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "event": "stage2_thinking",
+      "thinking": {
+        "progress": "1/5",
+        "name": "陈向勇",
+        "org": "临沂大学",
+        "pubs_last_2_years": 0,
+        "activity_score": 0.4,
+        "recent_papers_count": 0,
+        "reason": "陈向勇：近2年发文 0 篇，activity_score=0.40"
+      }
+    },
+    {
+      "event": "stage2_thinking",
+      "thinking": {
+        "progress": "2/5",
+        "name": "高岩波",
+        "org": "南通大学",
+        "pubs_last_2_years": 0,
+        "activity_score": 0.4,
+        "recent_papers_count": 0,
+        "reason": "高岩波：近2年发文 0 篇，activity_score=0.40"
+      }
+    },
+    {
+      "event": "stage2_thinking",
+      "thinking": {
+        "progress": "3/5",
+        "name": "毛北行",
+        "org": "郑州航空工业管理学院",
+        "pubs_last_2_years": 2,
+        "activity_score": 2.8,
+        "recent_papers_count": 2,
+        "reason": "毛北行：近2年发文 2 篇，activity_score=2.80"
+      }
+    },
+    {
+      "event": "stage2_thinking",
+      "thinking": {
+        "progress": "4/5",
+        "name": "臧鸿雁",
+        "org": "北京科技大学",
+        "pubs_last_2_years": 0,
+        "activity_score": 0.8,
+        "recent_papers_count": 0,
+        "reason": "臧鸿雁：近2年发文 0 篇，activity_score=0.80"
+      }
+    },
+    {
+      "event": "stage2_thinking",
+      "thinking": {
+        "progress": "5/5",
+        "name": "孙克辉",
+        "org": "中南大学",
+        "pubs_last_2_years": 0,
+        "activity_score": 0.8,
+        "recent_papers_count": 0,
+        "reason": "孙克辉：近2年发文 0 篇，activity_score=0.80"
+      }
+    },
+    {
+      "event": "stage2_thinking",
+      "thinking": {
+        "summary": "对 5 位候选人调用 get_author_info（pub_year=2024-2026），计算 activity_score = 近2年发文量×0.6 + H指数×0.4。\n已完成 5 位学者背景补全，进入阶段三 LLM 语义精筛。",
+        "pub_year": "2024-2026",
+        "candidates": [
+          {
+            "rank": 1,
+            "name": "陈向勇",
+            "org": "临沂大学",
+            "pubs_last_2_years": 0,
+            "hindex": 1.0,
+            "activity_score": 0.4,
+            "recent_papers_count": 0,
+            "top_paper": "",
+            "reason": "近2年发文 0 篇，H 指数 1，活跃度得分 0.40"
+          },
+          {
+            "rank": 2,
+            "name": "高岩波",
+            "org": "南通大学",
+            "pubs_last_2_years": 0,
+            "hindex": 1.0,
+            "activity_score": 0.4,
+            "recent_papers_count": 0,
+            "top_paper": "",
+            "reason": "近2年发文 0 篇，H 指数 1，活跃度得分 0.40"
+          },
+          {
+            "rank": 3,
+            "name": "毛北行",
+            "org": "郑州航空工业管理学院",
+            "pubs_last_2_years": 2,
+            "hindex": 4.0,
+            "activity_score": 2.8,
+            "recent_papers_count": 2,
+            "top_paper": "变分数阶混沌系统有限时间自适应滑模同步",
+            "reason": "近2年发文 2 篇，H 指数 4，活跃度得分 2.80"
+          },
+          {
+            "rank": 4,
+            "name": "臧鸿雁",
+            "org": "北京科技大学",
+            "pubs_last_2_years": 0,
+            "hindex": 2.0,
+            "activity_score": 0.8,
+            "recent_papers_count": 0,
+            "top_paper": "",
+            "reason": "近2年发文 0 篇，H 指数 2，活跃度得分 0.80"
+          },
+          {
+            "rank": 5,
+            "name": "孙克辉",
+            "org": "中南大学",
+            "pubs_last_2_years": 0,
+            "hindex": 2.0,
+            "activity_score": 0.8,
+            "recent_papers_count": 0,
+            "top_paper": "",
+            "reason": "近2年发文 0 篇，H 指数 2，活跃度得分 0.80"
+          }
+        ]
+      }
+    },
+    {
+      "event": "stage3_thinking",
+      "thinking": {
+        "summary": "开始对 5 位候选人进行 LLM 语义精筛，以下为模型思考过程："
+      }
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "Let me analyze the paper and candidates carefully.\n\nPaper: \"混沌系统同步控制研究\""
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " (Research on Synchronization Control"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " of Chaotic Systems)\nKeywords"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ": 混沌系统 (cha"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "otic systems), 同步控制 (synchronization control)\n\n"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "Candidates analysis:\n\n1. **"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "陈向勇** - Research"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " on complex-variable chaotic systems, multi-switching transmission, finite-time control, combination synchronization. Relevant to synchronization control but no recent papers (pubs_last_2_years=0, activity_score=0.4). No recent papers listed"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ".\n\n2. **高岩"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "波** - Chaotic Lur'e systems, time-varying delay"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ", sampled-data, exponential synchronization"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ". Very relevant but pubs_last_2_years=0, activity_score=0.4. No recent papers listed"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ".\n\n3. **毛北行** - Chaos synchronization,"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " sliding mode, fractional-order, self-adaptive, multi-scroll"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " systems, Genesio-Tesi systems. Has 2 papers"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " in last 2 years,"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " activity_score=2.8 (highest). Recent papers directly"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " on chaotic system synchronization with finite-time sliding mode. Very strong match.\n\n4. **"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "臧鸿雁** - Cha"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "otic systems, image encryption, generalized chaotic synchronization. activity_score=0.8, no recent papers.\n\n5. **孙克辉** - Fractional calculus, chaos, mem"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "ristor, hyperchaos, coupling synchronization. activity_score=0.8, no"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " recent papers.\n\nThe paper is about synchronization control of chaotic systems"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ". Let me rank:\n\n1. **毛北行** - Best match: directly works"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " on chaotic system synchronization (混沌"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "同步), uses sliding mode and"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " adaptive control methods, has recent"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " publications (2025, 2026) on finite-time adaptive sliding mode synchronization of variable"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " fractional-order chaotic systems. activity"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "_score=2.8 ("
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "highest), hindex=4.0. Excellent semantic match"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ".\n\n2. **高岩波** - Good match: works on chaotic Lur'e system"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " synchronization with sampled-data control and"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " time-varying delays. Exponential synchronization is directly relevant. But no"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " recent papers.\n\n3. **陈向勇** - Relevant: combination synchronization, finite-time"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " control of complex-variable chaotic systems. But no recent papers.\n\n"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "4. **孙克辉** - Relevant: coupling synchronization"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ", chaos, hyperchaos, fractional calculus. But no recent papers.\n\n5. **臧鸿雁** - Somewhat relevant: generalized chaotic synchronization, but mainly focuses on image encryption. Least directly relevant"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " to synchronization control.\n\nLet me pick top 3-5"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ". I'll go with 4:\n- 毛北行 (best overall match - semantic"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " + activity)\n- 高岩"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": "波 (strong semantic match on"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " synchronization control methodology)\n- 陈向勇 (relevant synchronization control"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " work)\n- 孙克辉 (coupling synchronization + chaos, more senior)\n\nActually, 臧鸿雁 focuses more on encryption than control methodology"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ", so I'll exclude him in"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " favor of 孙克辉 who"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": " has coupling synchronization expertise.\n\nLet me finalize with 4 reviewers"
+    },
+    {
+      "event": "stage3_thinking",
+      "chunk": ", ranked by priority."
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "\n\n{\"reviewers\":[{\"name\":\"毛北行\",\"email\":\""
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "bxmao329@163.com\",\"matched_paper\":\"变"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "分数阶混沌系统有限时间自适应滑模同步\",\"reason"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "\":\"该学者长期深耕"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "混沌系统同步控制领域，研究关键词涵盖混沌同步、滑模控制、分数阶系统与自适应控制，与待审论文'混沌系统同步控制研究"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "'在研究对象（混沌系统）与核心方法（同步控制策略设计）上高度契合。其近两年连续发表变分数阶混沌系统有限时间自适应滑模同步相关"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "成果（2025年PMSM变分数阶混沌"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "系统同步、2026年"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "三阶三次混沌系统滑"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "模同步），持续活跃度高"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "，activity_score=2."
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "8为全部候选中最高，hindex=4."
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "0，具备扎实的同主题"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "审稿能力。\"},{\"name\":\"高岩波\",\"email\":\"gao.yb@"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "ntu.edu.cn\",\"matched_paper\":\"\",\"reason\":\"该学者专注于混沌Lur'e系统的指数同步与采样"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "数据控制研究，研究方向直接"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "覆盖混沌系统同步控制中的"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "关键方法论（时变时滞系统建模、采样数据控制器设计、指数同步判据），与待审论文主题高度匹配。但近"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "2年无新发文记录"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "（pubs_last_2"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "_years=0），activity_score=0.4偏低"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "，需提示编辑部其近年活跃"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "度不足，建议作为方法论审稿备选。\"},{\"name\":\"陈向勇\",\"email\":\"cxy8305@163.com\",\"matched_paper\":\"\",\"reason\":\"该学者研究方向为复变量混沌系统的有限时控制与组"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "合同步，涉及混沌同步控制"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "中的有限时间稳定性理论与组合"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "/投影同步方法，与待审论文所关注的同步控制策略设计存在明确的方法论交集。hindex=1"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": ".0，近2年无新发文（activity_score=0.4），活跃度偏低，但其有限时同步控制"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "的研究积累可对论文的方法"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "创新性评估提供参考。\"},{\"name\":\"孙克辉\",\"email\":\"kehui@c"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "su.edu.cn\",\"matched_paper\":\"\",\"reason\":\"该"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "学者来自中南大学，研究方向"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "涵盖分数阶微积分、混沌系统、耦合同步与超混沌，在混沌系统建模与同步控制方面具有较深厚积累，'耦"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "合同步'与待审论文同步控制主题直接对应"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "。但近2年无发文"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "（activity_score=0.8），需注意其研究"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "产出的时效性，建议邀请"
+    },
+    {
+      "event": "stage3_result",
+      "chunk": "其从混沌系统理论基础与同步机制层面提供评审意见。\"}]}"
+    },
+    {
+      "event": "stage3_done",
+      "reviewers": [
+        {
+          "name": "毛北行",
+          "email": "bxmao329@163.com",
+          "matched_paper": "变分数阶混沌系统有限时间自适应滑模同步",
+          "reason": "该学者长期深耕混沌系统同步控制领域，研究关键词涵盖混沌同步、滑模控制、分数阶系统与自适应控制，与待审论文'混沌系统同步控制研究'在研究对象（混沌系统）与核心方法（同步控制策略设计）上高度契合。其近两年连续发表变分数阶混沌系统有限时间自适应滑模同步相关成果（2025年PMSM变分数阶混沌系统同步、2026年三阶三次混沌系统滑模同步），持续活跃度高，activity_score=2.8为全部候选中最高，hindex=4.0，具备扎实的同主题审稿能力。"
+        },
+        {
+          "name": "高岩波",
+          "email": "gao.yb@ntu.edu.cn",
+          "matched_paper": "",
+          "reason": "该学者专注于混沌Lur'e系统的指数同步与采样数据控制研究，研究方向直接覆盖混沌系统同步控制中的关键方法论（时变时滞系统建模、采样数据控制器设计、指数同步判据），与待审论文主题高度匹配。但近2年无新发文记录（pubs_last_2_years=0），activity_score=0.4偏低，需提示编辑部其近年活跃度不足，建议作为方法论审稿备选。"
+        },
+        {
+          "name": "陈向勇",
+          "email": "cxy8305@163.com",
+          "matched_paper": "",
+          "reason": "该学者研究方向为复变量混沌系统的有限时控制与组合同步，涉及混沌同步控制中的有限时间稳定性理论与组合/投影同步方法，与待审论文所关注的同步控制策略设计存在明确的方法论交集。hindex=1.0，近2年无新发文（activity_score=0.4），活跃度偏低，但其有限时同步控制的研究积累可对论文的方法创新性评估提供参考。"
+        },
+        {
+          "name": "孙克辉",
+          "email": "kehui@csu.edu.cn",
+          "matched_paper": "",
+          "reason": "该学者来自中南大学，研究方向涵盖分数阶微积分、混沌系统、耦合同步与超混沌，在混沌系统建模与同步控制方面具有较深厚积累，'耦合同步'与待审论文同步控制主题直接对应。但近2年无发文（activity_score=0.8），需注意其研究产出的时效性，建议邀请其从混沌系统理论基础与同步机制层面提供评审意见。"
+        }
+      ]
+    }
+  ],
+  "ground_truth": [
+    "陈向勇",
+    "高岩波",
+    "毛北行",
+    "臧鸿雁",
+    "孙克辉"
+  ],
+  "predicted": [
+    "毛北行",
+    "高岩波",
+    "陈向勇",
+    "孙克辉"
+  ],
+  "metrics": {
+    "hit_count": 4,
+    "gt_count": 5,
+    "pred_count": 4,
+    "recall": 0.8,
+    "precision": 1.0,
+    "missed": [
+      "臧鸿雁"
+    ],
+    "extra": []
+  },
+  "reviewers": [
+    {
+      "name": "毛北行",
+      "email": "bxmao329@163.com",
+      "matched_paper": "变分数阶混沌系统有限时间自适应滑模同步",
+      "reason": "该学者长期深耕混沌系统同步控制领域，研究关键词涵盖混沌同步、滑模控制、分数阶系统与自适应控制，与待审论文'混沌系统同步控制研究'在研究对象（混沌系统）与核心方法（同步控制策略设计）上高度契合。其近两年连续发表变分数阶混沌系统有限时间自适应滑模同步相关成果（2025年PMSM变分数阶混沌系统同步、2026年三阶三次混沌系统滑模同步），持续活跃度高，activity_score=2.8为全部候选中最高，hindex=4.0，具备扎实的同主题审稿能力。"
+    },
+    {
+      "name": "高岩波",
+      "email": "gao.yb@ntu.edu.cn",
+      "matched_paper": "",
+      "reason": "该学者专注于混沌Lur'e系统的指数同步与采样数据控制研究，研究方向直接覆盖混沌系统同步控制中的关键方法论（时变时滞系统建模、采样数据控制器设计、指数同步判据），与待审论文主题高度匹配。但近2年无新发文记录（pubs_last_2_years=0），activity_score=0.4偏低，需提示编辑部其近年活跃度不足，建议作为方法论审稿备选。"
+    },
+    {
+      "name": "陈向勇",
+      "email": "cxy8305@163.com",
+      "matched_paper": "",
+      "reason": "该学者研究方向为复变量混沌系统的有限时控制与组合同步，涉及混沌同步控制中的有限时间稳定性理论与组合/投影同步方法，与待审论文所关注的同步控制策略设计存在明确的方法论交集。hindex=1.0，近2年无新发文（activity_score=0.4），活跃度偏低，但其有限时同步控制的研究积累可对论文的方法创新性评估提供参考。"
+    },
+    {
+      "name": "孙克辉",
+      "email": "kehui@csu.edu.cn",
+      "matched_paper": "",
+      "reason": "该学者来自中南大学，研究方向涵盖分数阶微积分、混沌系统、耦合同步与超混沌，在混沌系统建模与同步控制方面具有较深厚积累，'耦合同步'与待审论文同步控制主题直接对应。但近2年无发文（activity_score=0.8），需注意其研究产出的时效性，建议邀请其从混沌系统理论基础与同步机制层面提供评审意见。"
+    }
+  ]
+}

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import os
 import re
-from typing import Iterable, List, Sequence
+from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 from agent.types import ReviewerCandidate
 
 _SPLIT_RE = re.compile(r"[;；,，、\n]+")
+
+STAGE1_MIN_OVERLAP = float(os.getenv("AGENT_STAGE1_MIN_OVERLAP", "0.5"))
+STAGE1_MAX_SELECTED = int(os.getenv("AGENT_STAGE1_MAX_SELECTED", "25"))
 
 
 def parse_keywords(text: str) -> List[str]:
@@ -109,12 +113,27 @@ def select_highest_overlap(
     candidates: Sequence[ReviewerCandidate],
     paper_keywords: Sequence[str],
     paper_title: str,
-) -> tuple[List[ReviewerCandidate], List[ReviewerCandidate]]:
-    """按重合度排序，并将重合度最高档的候选人全部选入阶段二。"""
+) -> Tuple[List[ReviewerCandidate], List[ReviewerCandidate], Dict[str, Any]]:
+    """按重合度排序，overlap ≥ 阈值入选；超过上限则取综合排名前 N。"""
     all_ranked = rank_candidates(candidates, paper_keywords, paper_title)
     if not all_ranked:
-        return [], []
+        return [], [], {
+            "min_overlap": STAGE1_MIN_OVERLAP,
+            "max_selected": STAGE1_MAX_SELECTED,
+            "max_overlap": 0.0,
+            "capped": False,
+            "passed_min_overlap_count": 0,
+        }
 
     max_overlap = max(c.overlap_score for c in all_ranked)
-    selected = [c for c in all_ranked if c.overlap_score >= max_overlap]
-    return all_ranked, selected
+    passed = [c for c in all_ranked if c.overlap_score >= STAGE1_MIN_OVERLAP]
+    capped = len(passed) > STAGE1_MAX_SELECTED
+    selected = all_ranked[:STAGE1_MAX_SELECTED] if capped else passed
+
+    return all_ranked, selected, {
+        "min_overlap": STAGE1_MIN_OVERLAP,
+        "max_selected": STAGE1_MAX_SELECTED,
+        "max_overlap": max_overlap,
+        "capped": capped,
+        "passed_min_overlap_count": len(passed),
+    }

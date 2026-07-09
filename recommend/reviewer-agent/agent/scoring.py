@@ -106,6 +106,7 @@ def enrich_candidate(
         research_keywords=candidate.research_keywords,
         recent_papers=recent_papers,
         overlap_score=candidate.overlap_score,
+        subject=candidate.subject,
     )
 
 
@@ -118,6 +119,7 @@ def enriched_to_llm_dict(candidate: EnrichedCandidate) -> Dict[str, Any]:
         "activity_score": candidate.activity_score,
         "pubs_last_2_years": candidate.pubs_last_2_years,
         "overlap_score": candidate.overlap_score,
+        "subject": candidate.subject,
         "research_keywords": candidate.research_keywords,
         "recent_papers": [
             {

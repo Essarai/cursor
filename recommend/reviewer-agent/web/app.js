@@ -131,7 +131,7 @@ function renderStage1(thinking) {
       <span class="stat-chip">API 召回 ${thinking.total_from_api ?? 0} 人</span>
       <span class="stat-chip">COI 后 ${thinking.after_coi ?? 0} 人</span>
       <span class="stat-chip">排序 ${thinking.ranked_count ?? lastStage1Experts.length} 人</span>
-      <span class="stat-chip">最高重合度 ${(thinking.max_overlap_score ?? 0).toFixed?.(2) ?? thinking.max_overlap_score ?? "-"}</span>
+      <span class="stat-chip">阈值 ≥ ${(thinking.min_overlap_threshold ?? 0.5).toFixed?.(2) ?? thinking.min_overlap_threshold ?? "0.5"}</span>
       <span class="stat-chip">入选 ${thinking.selected_count ?? 0} 人</span>
     </div>
     <pre class="summary-block">${escapeHtml(thinking.summary || "")}</pre>
@@ -144,7 +144,7 @@ function renderStage1(thinking) {
       />
       <label class="stage1-filter">
         <input type="checkbox" id="stage1SelectedOnly" />
-        仅看重合度最高（${thinking.selected_count ?? 0} 人）
+        仅看入选（${thinking.selected_count ?? 0} 人）
       </label>
       ${
         hasAnyEmail
@@ -250,6 +250,36 @@ function renderStage3Summary(thinking) {
   }
 }
 
+function renderRecentPapers(papers) {
+  const items = (papers || []).filter((p) => p?.title?.trim());
+  if (!items.length) {
+    return `<p class="reviewer-meta muted">暂无近期发文记录</p>`;
+  }
+  return `
+    <ul class="recent-paper-list">
+      ${items
+        .slice(0, 5)
+        .map(
+          (paper) => `
+            <li>
+              ${paper.year ? `<span class="paper-year">${escapeHtml(paper.year)}</span>` : ""}
+              ${escapeHtml(paper.title)}
+            </li>
+          `
+        )
+        .join("")}
+    </ul>
+  `;
+}
+
+function renderResearchField(item) {
+  const keywords = (item.research_keywords || []).filter(Boolean);
+  if (keywords.length) {
+    return keywords.slice(0, 8).join("、");
+  }
+  return item.subject || "-";
+}
+
 function renderResult(reviewers) {
   lastReviewers = reviewers;
   setStageCard("stage3", "done");
@@ -273,7 +303,10 @@ function renderResult(reviewers) {
           (item, index) => `
             <article class="reviewer-card">
               <div class="reviewer-head">
-                <h4>${escapeHtml(item.name)}</h4>
+                <div>
+                  <h4>${escapeHtml(item.name)}</h4>
+                  <p class="reviewer-org">${escapeHtml(item.org || "-")}</p>
+                </div>
                 <button
                   type="button"
                   class="copy-btn"
@@ -281,7 +314,29 @@ function renderResult(reviewers) {
                   ${item.email?.trim() ? "" : "disabled"}
                 >复制邮箱</button>
               </div>
-              <p class="reviewer-paper">匹配论文：${escapeHtml(item.matched_paper || "-")}</p>
+              <dl class="reviewer-meta-grid">
+                <div>
+                  <dt>研究领域</dt>
+                  <dd>${escapeHtml(renderResearchField(item))}</dd>
+                </div>
+                <div>
+                  <dt>H 指数</dt>
+                  <dd>${item.hindex ?? "-"}</dd>
+                </div>
+                <div>
+                  <dt>近 2 年发文</dt>
+                  <dd>${item.pubs_last_2_years ?? 0} 篇</dd>
+                </div>
+              </dl>
+              <div class="reviewer-section">
+                <p class="reviewer-section-title">最近发文</p>
+                ${renderRecentPapers(item.recent_papers)}
+              </div>
+              ${
+                item.matched_paper?.trim()
+                  ? `<p class="reviewer-paper">匹配论文：${escapeHtml(item.matched_paper)}</p>`
+                  : ""
+              }
               <p class="reviewer-reason">${escapeHtml(item.reason || "")}</p>
             </article>
           `

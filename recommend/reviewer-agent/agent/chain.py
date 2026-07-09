@@ -207,6 +207,49 @@ def _to_recommendations(result: ScreeningOutput) -> None:
         raise ValueError("精筛结果为空，请检查 LLM 输出格式")
 
 
+def _candidate_index(candidates: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    index: Dict[str, Dict[str, Any]] = {}
+    for candidate in candidates:
+        name = str(candidate.get("name") or "").strip()
+        if name:
+            index[name] = candidate
+    return index
+
+
+def _merge_reviewer_profile(
+    item: ReviewerItem,
+    profile: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    merged: Dict[str, Any] = {
+        "name": item.name.strip(),
+        "email": item.email.strip(),
+        "matched_paper": item.matched_paper.strip(),
+        "reason": item.reason.strip(),
+    }
+    if not profile:
+        return merged
+
+    recent_papers = profile.get("recent_papers") or []
+    merged.update(
+        {
+            "org": str(profile.get("org") or "").strip(),
+            "hindex": profile.get("hindex", 0),
+            "subject": str(profile.get("subject") or "").strip(),
+            "research_keywords": profile.get("research_keywords") or [],
+            "pubs_last_2_years": profile.get("pubs_last_2_years", 0),
+            "recent_papers": [
+                {
+                    "title": str(p.get("title") or "").strip(),
+                    "year": str(p.get("year") or "").strip(),
+                }
+                for p in recent_papers
+                if isinstance(p, dict) and p.get("title")
+            ],
+        }
+    )
+    return merged
+
+
 def build_screening_chain(*, streaming: bool = False):
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -239,16 +282,13 @@ def stream_semantic_screening(llm_payload: Dict[str, Any]) -> None:
     parsed = _parse_screening_output(raw)
     _to_recommendations(parsed)
 
+    profiles = _candidate_index(llm_payload.get("candidates") or [])
+
     emit(
         "stage3_done",
         {
             "reviewers": [
-                {
-                    "name": item.name.strip(),
-                    "email": item.email.strip(),
-                    "matched_paper": item.matched_paper.strip(),
-                    "reason": item.reason.strip(),
-                }
+                _merge_reviewer_profile(item, profiles.get(item.name.strip()))
                 for item in parsed.reviewers
                 if item.name.strip()
             ],

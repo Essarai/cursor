@@ -506,15 +506,84 @@ button:disabled {
 
 .reviewer-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .reviewer-card h4 {
-  margin: 0;
+  margin: 0 0 4px;
   font-size: 18px;
+}
+
+.reviewer-org {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.reviewer-meta-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.reviewer-meta-grid dt {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.reviewer-meta-grid dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #0f172a;
+}
+
+.reviewer-section {
+  margin-bottom: 12px;
+}
+
+.reviewer-section-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.recent-paper-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.recent-paper-list li + li {
+  margin-top: 6px;
+}
+
+.paper-year {
+  display: inline-block;
+  min-width: 42px;
+  margin-right: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #64748b;
+}
+
+.reviewer-meta.muted {
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
 }
 
 .copy-btn,
@@ -592,5 +661,9 @@ button:disabled {
 
   .form-panel {
     position: static;
+  }
+
+  .reviewer-meta-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -54,9 +54,15 @@ def _build_stage1_thinking(
     after_coi: List[ReviewerCandidate],
     all_ranked: List[ReviewerCandidate],
     selected_candidates: List[ReviewerCandidate],
-    max_overlap: float,
+    stage1_meta: Dict[str, Any],
 ) -> Dict[str, Any]:
     coi_count = len(all_candidates) - len(after_coi)
+    max_overlap = stage1_meta.get("max_overlap", 0.0)
+    min_overlap = stage1_meta.get("min_overlap", 0.5)
+    max_selected = stage1_meta.get("max_selected", 25)
+    passed_count = stage1_meta.get("passed_min_overlap_count", len(selected_candidates))
+    capped = stage1_meta.get("capped", False)
+
     lines = [
         f"调用 get_recommend_reviewers，关键词：{paper.keywords}，返回 {len(all_candidates)} 位候选人。",
     ]
@@ -66,9 +72,12 @@ def _build_stage1_thinking(
         )
     else:
         lines.append("未填写原作者机构，跳过 COI 熔断。")
+
+    cap_note = f"，超过上限 {max_selected} 人，按综合分截取 Top {max_selected}" if capped else ""
     lines.append(
         f"对 {len(all_ranked)} 位候选人完成关键词重合度 + H 指数加权排序；"
-        f"重合度最高档（{max_overlap:.2f}）共 {len(selected_candidates)} 人，全部进入阶段二。"
+        f"重合度 ≥ {min_overlap:.2f} 共 {passed_count} 人{cap_note}，"
+        f"最终 {len(selected_candidates)} 人进入阶段二（最高重合度 {max_overlap:.2f}）。"
     )
 
     selected_keys = {(c.name, c.org) for c in selected_candidates}
@@ -85,6 +94,9 @@ def _build_stage1_thinking(
         "coi_filtered_count": coi_count,
         "ranked_count": len(all_ranked),
         "max_overlap_score": max_overlap,
+        "min_overlap_threshold": min_overlap,
+        "passed_min_overlap_count": passed_count,
+        "stage1_capped": capped,
         "selected_count": len(selected_candidates),
         "experts": experts,
         "selected": selected,
@@ -130,16 +142,15 @@ def _build_stage2_thinking(
 
 
 def run_stage1(paper: PaperInput, api_code: Optional[str] = None) -> Dict[str, Any]:
-    """阶段一：拉取候选人 → COI 熔断 → 重合度最高档全部入选。"""
+    """阶段一：拉取候选人 → COI 熔断 → overlap 阈值筛选（可截断 Top N）。"""
     all_candidates = fetch_reviewers(paper.keywords, api_code)
     after_coi = filter_coi(all_candidates, paper.author_org)
     paper_keywords = parse_keywords(paper.keywords)
-    all_ranked, selected_candidates = select_highest_overlap(
+    all_ranked, selected_candidates, stage1_meta = select_highest_overlap(
         after_coi,
         paper_keywords,
         paper.title,
     )
-    max_overlap = selected_candidates[0].overlap_score if selected_candidates else 0.0
 
     thinking = _build_stage1_thinking(
         paper,
@@ -147,7 +158,7 @@ def run_stage1(paper: PaperInput, api_code: Optional[str] = None) -> Dict[str, A
         after_coi,
         all_ranked,
         selected_candidates,
-        max_overlap,
+        stage1_meta,
     )
     emit("stage1_thinking", {"thinking": thinking})
 
