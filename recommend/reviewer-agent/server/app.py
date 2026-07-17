@@ -7,14 +7,23 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from agent.author_pubs import fetch_author_pub_stats
+from agent.keyword_refine import refine_keywords
 from agent.runner import iter_agent_events
 from agent.types import PaperInput
-from server.schemas import HealthResponse, RecommendRequest
+from server.schemas import (
+    AuthorPubsRequest,
+    AuthorPubsResponse,
+    HealthResponse,
+    RecommendRequest,
+    RefineKeywordsRequest,
+    RefineKeywordsResponse,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "web"
@@ -45,14 +54,60 @@ def health() -> HealthResponse:
     return HealthResponse()
 
 
+@app.post(
+    "/api/v1/keywords/refine",
+    response_model=RefineKeywordsResponse,
+    tags=["recommend"],
+)
+def refine_paper_keywords(body: RefineKeywordsRequest) -> RefineKeywordsResponse:
+    """依据论文标题、摘要与原始关键词提炼检索关键词，供用户确认后使用。"""
+    try:
+        result = refine_keywords(
+            title=body.title,
+            abstract=body.abstract,
+            keywords=body.keywords,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"关键词提炼失败：{exc}") from exc
+    return RefineKeywordsResponse(**result)
+
+
+@app.post(
+    "/api/v1/authors/publications/stats",
+    response_model=AuthorPubsResponse,
+    tags=["authors"],
+)
+def author_publication_stats(body: AuthorPubsRequest) -> AuthorPubsResponse:
+    """按作者姓名拉发文，并用论文关键词筛选后按年聚合一作/通讯/其他。"""
+    try:
+        result = fetch_author_pub_stats(
+            author=body.author,
+            keywords=body.keywords,
+            org=body.org,
+            pub_year=body.pub_year,
+            author_id=body.author_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"发文查询失败：{exc}") from exc
+    return AuthorPubsResponse(**result)
+
+
 @app.post("/api/v1/recommend/reviewers", tags=["recommend"])
 def recommend_reviewers(body: RecommendRequest) -> StreamingResponse:
     """流式返回 NDJSON 事件（与 CLI stdout 格式一致）。"""
+    extra = body.extra.strip()
+    abstract = body.abstract.strip()
+    if abstract:
+        abstract_note = f"论文摘要：{abstract}"
+        extra = f"{abstract_note}\n{extra}" if extra else abstract_note
+
     paper = PaperInput(
         title=body.title,
         keywords=body.keywords,
         author_org=body.author_org,
-        extra=body.extra,
+        extra=extra,
     )
 
     def generate() -> bytes:

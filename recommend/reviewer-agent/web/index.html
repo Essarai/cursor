@@ -38,7 +38,16 @@
           </label>
 
           <label>
-            <span>关键词 <em>*</em></span>
+            <span>论文摘要</span>
+            <textarea
+              name="abstract"
+              rows="5"
+              placeholder="粘贴论文摘要，用于提炼更准确的检索关键词"
+            ></textarea>
+          </label>
+
+          <label>
+            <span>原始关键词 <em>*</em></span>
             <input
               type="text"
               name="keywords"
@@ -68,10 +77,23 @@
           </label>
 
           <div class="form-actions">
-            <button type="submit" id="submitBtn">开始推荐</button>
+            <button type="submit" id="submitBtn">提炼关键词</button>
             <button type="button" id="stopBtn" class="secondary" disabled>停止</button>
           </div>
         </form>
+
+        <div class="keyword-confirm hidden" id="keywordConfirm">
+          <h3>确认检索关键词</h3>
+          <p class="keyword-reasoning" id="keywordReasoning"></p>
+          <label>
+            <span>提炼结果（可手动修改，逗号分隔）</span>
+            <input type="text" id="confirmedKeywords" />
+          </label>
+          <div class="form-actions">
+            <button type="button" id="confirmKeywordsBtn" class="primary-btn">确认并开始推荐</button>
+            <button type="button" id="cancelKeywordsBtn" class="secondary">返回修改</button>
+          </div>
+        </div>
       </section>
 
       <section class="panel output-panel">
@@ -145,6 +167,21 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div class="modal-overlay hidden" id="pubsModal" role="dialog" aria-modal="true" aria-labelledby="pubsModalTitle">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <h3 id="pubsModalTitle">历史发文统计</h3>
+          <p class="modal-subtitle" id="pubsModalSubtitle"></p>
+        </div>
+        <button type="button" class="modal-close" id="pubsModalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body" id="pubsModalBody">
+        <p class="placeholder">加载中…</p>
+      </div>
+    </div>
   </div>
 
   <script src="/app.js"></script>

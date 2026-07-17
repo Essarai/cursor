@@ -27,6 +27,7 @@
   },
   "candidates": [
     {
+      "candidate_id": "string — 候选人唯一 ID",
       "name": "string",
       "org": "string",
       "email": "string",
@@ -112,6 +113,7 @@
 {
   "reviewers": [
     {
+      "candidate_id": "候选人唯一 ID",
       "name": "学者姓名",
       "email": "联系邮箱",
       "matched_paper": "最相关的代表作题目，无近期论文时可为空字符串",
@@ -124,6 +126,7 @@
 字段约束：
 
 - `reviewers`：数组，长度按上表规则
+- `candidate_id`：必填，与 `candidates` 中候选人唯一 ID 完全一致
 - `name`：必填，与 `candidates` 中姓名完全一致
 - `email`：必填，优先使用候选人数据中的邮箱
 - `matched_paper`：若 `recent_papers` 中有相关论文则填写其标题；**若无近期论文或无一相关，填空字符串 `""`**

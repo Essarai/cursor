@@ -28,6 +28,7 @@ _THINK_START_ALT = "\u003cthink\u003e"
 
 
 class ReviewerItem(BaseModel):
+    candidate_id: str = Field(description="候选人唯一 ID")
     name: str = Field(description="学者姓名")
     email: str = Field(description="联系邮箱")
     matched_paper: str = Field(description="近3年最相关的代表作题目")
@@ -46,7 +47,12 @@ def load_system_prompt() -> str:
     return template.replace(PLACEHOLDER, golden)
 
 
-def _build_llm(*, streaming: bool = False) -> ChatOpenAI:
+def _build_llm(
+    *,
+    streaming: bool = False,
+    json_mode: bool | None = None,
+    temperature: float | None = None,
+) -> ChatOpenAI:
     api_key = (
         os.getenv("MINIMAX_API_KEY", "").strip()
         or os.getenv("OPENAI_API_KEY", "").strip()
@@ -72,11 +78,17 @@ def _build_llm(*, streaming: bool = False) -> ChatOpenAI:
         "temperature": 0.2,
         "streaming": streaming,
     }
-    if not streaming and os.getenv("LLM_JSON_MODE", "1").strip() not in (
-        "0",
-        "false",
-        "False",
-    ):
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+
+    use_json_mode = json_mode
+    if use_json_mode is None:
+        use_json_mode = os.getenv("LLM_JSON_MODE", "1").strip() not in (
+            "0",
+            "false",
+            "False",
+        )
+    if not streaming and use_json_mode:
         kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
 
     return ChatOpenAI(**kwargs)
@@ -210,10 +222,104 @@ def _to_recommendations(result: ScreeningOutput) -> None:
 def _candidate_index(candidates: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     index: Dict[str, Dict[str, Any]] = {}
     for candidate in candidates:
+        candidate_id = str(candidate.get("candidate_id") or "").strip()
         name = str(candidate.get("name") or "").strip()
-        if name:
-            index[name] = candidate
+        key = candidate_id or name
+        if key:
+            index[key] = candidate
     return index
+
+
+def _resolve_candidate(
+    candidates: List[Dict[str, Any]],
+    *,
+    candidate_id: str = "",
+    name: str = "",
+) -> Dict[str, Any] | None:
+    normalized_id = candidate_id.strip()
+    if normalized_id:
+        for candidate in candidates:
+            if str(candidate.get("candidate_id") or "").strip() == normalized_id:
+                return candidate
+        return None
+
+    normalized_name = name.strip()
+    matches = [
+        candidate
+        for candidate in candidates
+        if str(candidate.get("name") or "").strip() == normalized_name
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def validate_and_normalize_reviewers(
+    reviewers: List[ReviewerItem],
+    candidates: List[Dict[str, Any]],
+) -> List[ReviewerItem]:
+    if not (3 <= len(reviewers) <= 5):
+        raise ValueError(f"审稿人数量须为 3–5 人，当前 {len(reviewers)} 人")
+
+    normalized: List[ReviewerItem] = []
+    seen: set[str] = set()
+    for item in reviewers:
+        if not item.candidate_id.strip():
+            raise ValueError(f"{item.name or '未知候选人'} 缺少 candidate_id")
+        profile = _resolve_candidate(
+            candidates,
+            candidate_id=item.candidate_id,
+            name=item.name,
+        )
+        if profile is None:
+            raise ValueError(
+                f"候选人不存在或姓名不唯一：candidate_id={item.candidate_id!r}, "
+                f"name={item.name!r}"
+            )
+
+        candidate_id = str(profile.get("candidate_id") or "").strip()
+        canonical_name = str(profile.get("name") or "").strip()
+        if not candidate_id:
+            raise ValueError(f"{canonical_name} 的候选数据缺少 candidate_id")
+        if item.name.strip() != canonical_name:
+            raise ValueError(
+                f"candidate_id={candidate_id} 对应姓名为 {canonical_name}，"
+                f"不是 {item.name.strip()}"
+            )
+        identity_key = candidate_id or (
+            f"{canonical_name}|{str(profile.get('org') or '').strip()}"
+        )
+        if identity_key in seen:
+            raise ValueError(f"审稿人重复：{canonical_name}")
+        seen.add(identity_key)
+
+        canonical_email = str(profile.get("email") or "").strip()
+        submitted_email = item.email.strip()
+        if not canonical_email and not submitted_email:
+            raise ValueError(f"{canonical_name} 缺少可核实邮箱")
+        if canonical_email and submitted_email and canonical_email != submitted_email:
+            raise ValueError(f"{canonical_name} 的邮箱与候选数据不一致")
+
+        matched_paper = item.matched_paper.strip()
+        valid_papers = {
+            str(paper.get("title") or "").strip()
+            for paper in profile.get("recent_papers") or []
+            if isinstance(paper, dict) and paper.get("title")
+        }
+        if matched_paper and matched_paper not in valid_papers:
+            raise ValueError(f"{canonical_name} 的代表作不在已核实论文中")
+
+        normalized.append(
+            item.model_copy(
+                update={
+                    "candidate_id": candidate_id,
+                    "name": canonical_name,
+                    "email": canonical_email or submitted_email,
+                    "matched_paper": matched_paper,
+                    "reason": item.reason.strip(),
+                }
+            )
+        )
+
+    return normalized
 
 
 def _merge_reviewer_profile(
@@ -221,6 +327,7 @@ def _merge_reviewer_profile(
     profile: Dict[str, Any] | None,
 ) -> Dict[str, Any]:
     merged: Dict[str, Any] = {
+        "candidate_id": item.candidate_id.strip(),
         "name": item.name.strip(),
         "email": item.email.strip(),
         "matched_paper": item.matched_paper.strip(),
@@ -304,15 +411,26 @@ def _stream_oneshot_screening(llm_payload: Dict[str, Any]) -> None:
 
     raw = "".join(parts)
     parsed = _parse_screening_output(raw)
+    candidates = llm_payload.get("candidates") or []
+    normalized_reviewers = validate_and_normalize_reviewers(
+        parsed.reviewers,
+        candidates,
+    )
+    parsed = ScreeningOutput(reviewers=normalized_reviewers)
     _to_recommendations(parsed)
-
-    profiles = _candidate_index(llm_payload.get("candidates") or [])
 
     emit(
         "stage3_done",
         {
             "reviewers": [
-                _merge_reviewer_profile(item, profiles.get(item.name.strip()))
+                _merge_reviewer_profile(
+                    item,
+                    _resolve_candidate(
+                        candidates,
+                        candidate_id=item.candidate_id,
+                        name=item.name,
+                    ),
+                )
                 for item in parsed.reviewers
                 if item.name.strip()
             ],

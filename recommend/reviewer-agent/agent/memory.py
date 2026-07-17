@@ -75,8 +75,12 @@ class LongTermMemory:
         pub_year: str,
         page: int,
         limit: int,
+        author_id: str = "",
     ) -> str:
-        raw = f"author:{author.strip()}|org:{org.strip()}|year:{pub_year.strip()}|p:{page}|l:{limit}"
+        raw = (
+            f"id:{author_id.strip()}|author:{author.strip()}|org:{org.strip()}|"
+            f"year:{pub_year.strip()}|p:{page}|l:{limit}"
+        )
         return self._hash(raw)
 
     def get(self, namespace: str, cache_key: str) -> Optional[Dict[str, Any]]:

@@ -44,9 +44,28 @@ def fetch_author_info_with_memory(
     page: int = 1,
     limit: int = 20,
     api_code: Optional[str] = None,
+    *,
+    author_id: str = "",
+    strict_identity: bool = False,
 ) -> Dict[str, Any]:
+    if strict_identity and not org.strip():
+        return {
+            "success": False,
+            "message": f"候选人 {author} 缺少机构，无法安全消歧",
+            "code": 422,
+            "result": None,
+            "identity_verified": False,
+        }
+
     store = get_memory_store()
-    cache_key = store.author_info_key(author, org, pub_year, page, limit)
+    cache_key = store.author_info_key(
+        author,
+        org,
+        pub_year,
+        page,
+        limit,
+        author_id=author_id,
+    )
     cached = store.get(NS_AUTHOR_INFO, cache_key)
     if cached is not None:
         return cached
@@ -63,8 +82,20 @@ def fetch_author_info_with_memory(
     result = response.get("result") or {}
     total = result.get("total") or 0
 
-    if response.get("success") and total == 0 and org.strip():
-        retry_key = store.author_info_key(author, "", pub_year, page, limit)
+    if (
+        not strict_identity
+        and response.get("success")
+        and total == 0
+        and org.strip()
+    ):
+        retry_key = store.author_info_key(
+            author,
+            "",
+            pub_year,
+            page,
+            limit,
+            author_id=author_id,
+        )
         retry_cached = store.get(NS_AUTHOR_INFO, retry_key)
         if retry_cached is not None:
             return retry_cached
@@ -80,6 +111,7 @@ def fetch_author_info_with_memory(
         cache_key = retry_key
 
     if response.get("success"):
+        response = {**response, "identity_verified": bool(org.strip())}
         store.put(
             NS_AUTHOR_INFO,
             cache_key,
@@ -90,6 +122,8 @@ def fetch_author_info_with_memory(
                 "pub_year": pub_year,
                 "page": page,
                 "limit": limit,
+                "author_id": author_id,
+                "strict_identity": strict_identity,
             },
         )
 

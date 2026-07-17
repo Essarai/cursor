@@ -9,9 +9,12 @@ from agent.emit import emit
 from agent.filters import filter_coi, parse_keywords, select_highest_overlap
 from agent.tools import fetch_reviewers_with_memory
 from agent.scoring import (
+    FUSION_ACTIVITY_WEIGHT,
+    FUSION_OVERLAP_WEIGHT,
     enrich_candidate,
     enriched_to_llm_dict,
     pub_year_range_last_n,
+    rerank_enriched_candidates,
 )
 from agent.types import EnrichedCandidate, PaperInput, ReviewerCandidate, parse_reviewer
 from cscd.client import init_api_code
@@ -33,6 +36,7 @@ def _expert_dict(candidate: ReviewerCandidate, rank: int, *, selected: bool) -> 
     keywords = candidate.research_keywords[:8]
     return {
         "rank": rank,
+        "id": candidate.id,
         "name": candidate.name,
         "org": candidate.org,
         "email": candidate.email,
@@ -109,7 +113,8 @@ def _build_stage2_thinking(
 ) -> Dict[str, Any]:
     lines = [
         f"对 {len(enriched)} 位候选人调用 get_author_info（pub_year={pub_year}），"
-        "计算 activity_score = 近2年发文量×0.6 + H指数×0.4。",
+        "计算 activity_score = 近2年发文量×0.6 + H指数×0.4；"
+        f"按融合分重排（overlap×{FUSION_OVERLAP_WEIGHT:g} + activity_norm×{FUSION_ACTIVITY_WEIGHT:g}）。",
     ]
 
     candidates = []
@@ -123,11 +128,14 @@ def _build_stage2_thinking(
                 "pubs_last_2_years": c.pubs_last_2_years,
                 "hindex": c.hindex,
                 "activity_score": c.activity_score,
+                "fusion_score": c.fusion_score,
+                "overlap_score": c.overlap_score,
                 "recent_papers_count": len(c.recent_papers),
                 "top_paper": top_paper,
                 "reason": (
                     f"近2年发文 {c.pubs_last_2_years} 篇，H 指数 {c.hindex:.0f}，"
-                    f"活跃度得分 {c.activity_score:.2f}"
+                    f"activity_score={c.activity_score:.2f}，"
+                    f"融合分 {c.fusion_score:.2f}（overlap {c.overlap_score:.2f}）"
                 ),
             }
         )
@@ -198,6 +206,8 @@ def run_stage2(
                 },
             },
         )
+
+    enriched = rerank_enriched_candidates(enriched)
 
     emit(
         "stage2_thinking",

@@ -36,6 +36,7 @@ class RecentPaper:
 
 @dataclass
 class EnrichedCandidate:
+    id: str
     name: str
     org: str
     email: str
@@ -46,6 +47,7 @@ class EnrichedCandidate:
     recent_papers: List[RecentPaper]
     overlap_score: float = 0.0
     subject: str = ""
+    fusion_score: float = 0.0
 
 
 def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
