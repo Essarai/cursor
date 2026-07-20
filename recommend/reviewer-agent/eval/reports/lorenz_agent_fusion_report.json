@@ -1,0 +1,292 @@
+{
+  "total_seconds": 166.2,
+  "mode": "agent",
+  "tool_steps": [
+    "[步骤 1] get_candidate_detail({\"name\": \"毛北行\"})",
+    "[步骤 1] get_candidate_detail({\"name\": \"刘树堂\"})",
+    "[步骤 1] get_candidate_detail({\"name\": \"孙克辉\"})",
+    "[步骤 2] get_candidate_detail({\"name\": \"薛薇\"})",
+    "[步骤 2] get_candidate_detail({\"name\": \"黄金杰\"})",
+    "[步骤 3] get_candidate_detail({\"name\": \"俞斌\"})"
+  ],
+  "fusion_top5": [
+    {
+      "name": "毛北行",
+      "fusion_score": 0.7538,
+      "overlap_score": 1.0,
+      "activity_score": 2.8
+    },
+    {
+      "name": "徐昌彪",
+      "fusion_score": 0.7308,
+      "overlap_score": 1.0,
+      "activity_score": 1.6
+    },
+    {
+      "name": "黄金杰",
+      "fusion_score": 0.7308,
+      "overlap_score": 1.0,
+      "activity_score": 1.6
+    },
+    {
+      "name": "虞继敏",
+      "fusion_score": 0.7231,
+      "overlap_score": 1.0,
+      "activity_score": 1.2
+    },
+    {
+      "name": "李春彪",
+      "fusion_score": 0.7192,
+      "overlap_score": 1.0,
+      "activity_score": 1.0
+    }
+  ],
+  "gt_hits": [
+    "孙克辉",
+    "毛北行"
+  ],
+  "gt_missed": [
+    "臧鸿雁",
+    "陈向勇",
+    "高岩波"
+  ],
+  "reviewers": [
+    {
+      "name": "孙克辉",
+      "email": "kehui@csu.edu.cn",
+      "matched_paper": "",
+      "reason": "研究方向涵盖简化Lorenz系统、分数阶微积分、超混沌、吸引子共存与耦合同步，与论文'四维Lorenz-like系统稳定性、分岔与混沌'主题高度契合。简化Lorenz系统是其长期深耕方向，分数阶与超混沌方法可借鉴用于四维Lorenz-like系统的分岔与共存吸引子分析。近2年暂无活跃发文记录，但研究积累深厚，仍应推荐。",
+      "org": "中南大学",
+      "hindex": 2.0,
+      "subject": "电子技术、通信技术;;自动化技术、计算机技术;;物理学;;电工技术;;交通运输",
+      "research_keywords": [
+        "分数阶微积分",
+        "混沌",
+        "忆阻器",
+        "超混沌",
+        "吸引子共存",
+        "扩频通信",
+        "简化Lorenz系统",
+        "微弱信号检测",
+        "高阶Duffing振子",
+        "耦合同步",
+        "spread spectrum communication",
+        "fractional calculus",
+        "chaos",
+        "memristor",
+        "hyperchaos",
+        "simplified Lorenz system",
+        "attractor coexisting",
+        "weak signal detection",
+        "higher-order Duffing oscillator",
+        "coupling synchronization"
+      ],
+      "pubs_last_2_years": 0,
+      "recent_papers": []
+    },
+    {
+      "name": "刘树堂",
+      "email": "stliu618@163.com",
+      "matched_paper": "",
+      "reason": "研究关键词包含分岔图、Lyapunov指数谱、拓扑马蹄、切换混沌系统、广义Logistic实映射与电路实验，是分岔与混沌动力学分析的核心方法论工具，与论文稳定性分析、共存吸引子及分岔研究方向高度匹配。近期发文涉及农业领域，但前期在混沌系统方向积累深厚，方法论契合度高。",
+      "org": "山东大学",
+      "hindex": 2.0,
+      "subject": "数学;;自动化技术、计算机技术;;电子技术、通信技术",
+      "research_keywords": [
+        "Julia集",
+        "反馈控制",
+        "同步",
+        "广义Logistic实映射",
+        "Mandelbrot集",
+        "切换混沌系统",
+        "Lyapunov指数谱",
+        "分岔图",
+        "电路实现",
+        "拓扑马蹄",
+        "Julia set",
+        "generalized real Logistic map",
+        "Mandelbrot set",
+        "feedback control",
+        "synchronization",
+        "switched chaotic system",
+        "Lyapunov exponent spectrum",
+        "bifurcation diagram",
+        "circuit experiment",
+        "topological horseshoe"
+      ],
+      "pubs_last_2_years": 0,
+      "recent_papers": [
+        {
+          "title": "长期定位施用化肥对非石灰性潮土有机碳及腐殖质组分的影响",
+          "year": "2024"
+        },
+        {
+          "title": "滴灌分次施肥下夏玉米养分积累及土壤无机氮残留的特性",
+          "year": "2024"
+        },
+        {
+          "title": "长期施肥对强筋专用小麦籽粒营养及磨粉品质性状的影响",
+          "year": "2024"
+        },
+        {
+          "title": "胸段食管癌微创术后治疗失败模式及辅助治疗价值",
+          "year": "2024"
+        }
+      ]
+    },
+    {
+      "name": "徐昌彪",
+      "email": "xuch@cqupt.edu.cn",
+      "matched_paper": "",
+      "reason": "研究关键词涵盖混沌系统、共存吸引子、自适应同步控制、拓扑马蹄、分数阶系统与电路实现，与论文四维Lorenz-like系统稳定性、分岔与混沌（特别是共存吸引子行为）研究方向直接契合。近期论文偏向图像加密应用，但其在共存吸引子与拓扑马蹄方向的积累可为论文分岔分析提供方法支撑。",
+      "org": "重庆邮电大学",
+      "hindex": 4.0,
+      "subject": "自动化技术、计算机技术;;电子技术、通信技术",
+      "research_keywords": [
+        "混沌系统",
+        "共存吸引子",
+        "自适应同步控制",
+        "拓扑马蹄",
+        "超密集网",
+        "系统容量",
+        "区间干扰",
+        "功率控制",
+        "分数阶系统",
+        "自适应控制",
+        "chaotic system",
+        "coexisting attractors",
+        "adaptive synchronization control",
+        "topological horseshoe",
+        "system capacity",
+        "power control",
+        "fractional order system",
+        "adaptive control",
+        "different structure synchronization",
+        "circuit implementation"
+      ],
+      "pubs_last_2_years": 0,
+      "recent_papers": [
+        {
+          "title": "基于二维离散混沌系统和DNA的图像加密方案",
+          "year": "2024"
+        }
+      ]
+    },
+    {
+      "name": "毛北行",
+      "email": "bxmao329@163.com",
+      "matched_paper": "变分数阶混沌系统有限时间自适应滑模同步",
+      "reason": "研究关键词覆盖混沌同步、滑模控制、分数阶系统、自适应控制、多涡卷系统与Genesio-Tesi系统，与论文混沌系统+同步控制主题高度契合。2025-2026年持续发表变分数阶混沌系统有限时间自适应滑模同步相关论文，近期活跃度高，方法论一致，可为论文混沌同步部分提供直接参考。",
+      "org": "郑州航空工业管理学院",
+      "hindex": 4.0,
+      "subject": "物理学;;自动化技术、计算机技术;;数学",
+      "research_keywords": [
+        "混沌同步",
+        "滑模",
+        "分数阶",
+        "自适应",
+        "同步",
+        "分数阶系统",
+        "混沌",
+        "滑模同步",
+        "自适应滑模",
+        "多涡卷系统",
+        "chaos synchronization",
+        "sliding mode",
+        "fractional-order",
+        "synchronization",
+        "chaos",
+        "fractional order systems",
+        "self-apaptive",
+        "sliding mode synchronization",
+        "self-adaptive sliding mode",
+        "Genesio-Tesi systems"
+      ],
+      "pubs_last_2_years": 2,
+      "recent_papers": [
+        {
+          "title": "变分数阶混沌系统有限时间自适应滑模同步",
+          "year": "2026"
+        },
+        {
+          "title": "PMSM变分数阶混沌系统有限时间自适应滑模同步",
+          "year": "2025"
+        }
+      ]
+    },
+    {
+      "name": "薛薇",
+      "email": "xuewei@tust.edu.cn",
+      "matched_paper": "",
+      "reason": "研究关键词涵盖混沌、拓扑马蹄、Poincare映射、分数阶超混沌系统、单向耦合同步与电路实现，是Lorenz-like系统分岔与混沌分析的关键工具，与论文稳定性、分岔、混沌主题高度匹配。近期发文方向偏离至其他领域，但前期在混沌系统动力学方向积累深厚，Poincare截面与拓扑马蹄方法可直接服务于本文动力学分析。",
+      "org": "天津科技大学",
+      "hindex": 2.0,
+      "subject": "自动化技术、计算机技术;;电工技术;;数学",
+      "research_keywords": [
+        "混沌",
+        "保密通信",
+        "电路实现",
+        "永磁同步电机",
+        "拓扑马蹄",
+        "Poincare映射",
+        "FPGA设计",
+        "分数阶超混沌系统",
+        "单向耦合同步",
+        "数值仿真",
+        "chaos",
+        "secure communication",
+        "circuit implementation",
+        "permanent magnet synchronous motor(PMSM)",
+        "topological horseshoe",
+        "Poincare mapping",
+        "FPGA design",
+        "fractional-order hyperchaotic system",
+        "unidirectionally coupled synchronization",
+        "numerical simulation"
+      ],
+      "pubs_last_2_years": 5,
+      "recent_papers": [
+        {
+          "title": "中西协同治疗妇科内分泌疾病新思路:通治方+西医规范化疗法",
+          "year": "2026"
+        },
+        {
+          "title": "药物临床试验生物样本分析实验室外部质量控制方法探讨——基于能力验证、实验室间比对与测量审核的比对分析",
+          "year": "2026"
+        },
+        {
+          "title": "甘薯KNOX基因家族成员鉴定及其在干旱胁迫下的表达分析",
+          "year": "2025"
+        },
+        {
+          "title": "基于3D Slicer软件对儿童脑积水侧脑室前角穿刺的虚拟现实分析",
+          "year": "2025"
+        },
+        {
+          "title": "公共财政框架下的财政科技体制改革思路——基于国际比较分析",
+          "year": "2025"
+        },
+        {
+          "title": "基于表型性状分析构建冀北地区马铃薯核心种质",
+          "year": "2024"
+        },
+        {
+          "title": "基于无迹卡尔曼滤波的液体火箭发动机故障诊断",
+          "year": "2024"
+        },
+        {
+          "title": "基于注意力机制循环神经网络的液体火箭发动机故障检测",
+          "year": "2024"
+        },
+        {
+          "title": "火箭发动机故障检测的快速增量单分类支持向量机算法",
+          "year": "2024"
+        },
+        {
+          "title": "氢氧火箭发动机流量调节阀动态仿真分析",
+          "year": "2024"
+        }
+      ]
+    }
+  ]
+}

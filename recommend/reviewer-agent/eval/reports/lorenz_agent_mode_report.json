@@ -1,0 +1,212 @@
+{
+  "mode": "agent",
+  "tool_steps": [
+    "[步骤 1] get_candidate_detail({\"name\": \"孙克辉\"})",
+    "[步骤 1] get_candidate_detail({\"name\": \"刘树堂\"})",
+    "[步骤 1] get_candidate_detail({\"name\": \"臧鸿雁\"})",
+    "[步骤 1] get_candidate_detail({\"name\": \"徐昌彪\"})",
+    "[步骤 1] get_candidate_detail({\"name\": \"黄金杰\"})",
+    "[步骤 2] fetch_author_publications({\"name\": \"孙克辉\", \"org\": \"中南大学\"})",
+    "[步骤 2] fetch_author_publications({\"name\": \"毛北行\", \"org\": \"郑州航空工业管理学院\"})",
+    "[步骤 2] fetch_author_publications({\"name\": \"李春彪\", \"org\": \"南京信息工程大学\"})",
+    "[步骤 3] submit_reviewers({\"reviewers_json\": \"{\\n  \\\"reviewers\\\": [\\n    {\\n      \\\"name\\\": \\\"孙克辉\\\",\\n      \\\"email\\\": \\\"kehui@csu.edu.cn\\\",\\n      \\\"matched_paper\\\": \\\"\\\",\\n      \\\"reason\\\": \\\"研究关键词直接包含「简化Lorenz系统」「分数阶微积分」「混沌」「超混沌」「吸引子共存」「耦合同步」等，与本文「四维Lorenz-like系统的稳定性、分岔与混沌」主题高度契合。其在简化Lorenz系统及高阶混沌系统动力学分析方面有深厚积累，是评审Lorenz型系统分岔与混沌行为的理想人选。\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"徐昌彪\\\",\\n      \\\"email\\\": \\\"xuch@cqupt.edu.cn\\\",\\n      \\\"matched_paper\\\": \\\"基于二维离散混沌系统和DNA的图像加密方案\\\",\\n      \\\"reason\\\": \\\"研究关键词含「混沌系统」「共存吸引子」「自适应同步控制」「拓扑马蹄」「分数阶系统」「异结构同步」，与本文关键词「混沌系统」「同步控制」完全匹配。2024年仍有混沌动力学相关活跃发表（基于Arnold映射的2维离散超混沌系统），对Lorenz-like系统的共存吸引子与同步控制有系统研究。\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"臧鸿雁\\\",\\n      \\\"email\\\": \\\"zhylixiang@126.com\\\",\\n      \\\"matched_paper\\\": \\\"\\\",\\n      \\\"reason\\\": \\\"研究关键词含「混沌系统」「拓扑共轭」「平衡点」「Lyapunov指数」「混沌判据」「广义混沌同步」，其中拓扑共轭、平衡点稳定性、Lyapunov指数判据正是分析Lorenz-like系统稳定性与分岔的核心方法。其方向契合本文理论分析需求，能从动力学层面提供专业评审意见。\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"毛北行\\\",\\n      \\\"email\\\": \\\"bxmao329@163.com\\\",\\n      \\\"matched_paper\\\": \\\"变分数阶混沌系统有限时间自适应滑模同步\\\",\\n      \\\"reason\\\": \\\"长期从事混沌同步控制研究，关键词「混沌同步」「滑模」「分数阶」「自适应」与本文高度匹配。2025–2026年连续发表变分数阶混沌系统有限时间自适应滑模同步方向论文，活跃度高，对混沌系统同步控制方法与稳定性分析有持续深入的研究。\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"虞继敏\\\",\\n      \\\"email\\\": \\\"yujm@cqupt.edu.cn\\\",\\n      \\\"matched_paper\\\": \\\"\\\",\\n      \\\"reason\\\": \\\"研究关键词含「混沌系统」「时滞系统」「同步」「线性反馈控制」「未知参数」，与本文关键词「混沌系统」「同步控制」直接对应。其在时滞混沌系统反馈同步控制方面有专门研究，能从时滞与反馈控制角度对Lorenz-like系统的稳定性与同步提供建设性意见。\\\"\\n    }\\n  ]\\n}\"})"
+  ],
+  "stage3_metrics": {
+    "hits": [
+      "孙克辉",
+      "毛北行",
+      "臧鸿雁"
+    ],
+    "missed": [
+      "陈向勇",
+      "高岩波"
+    ],
+    "extra": [
+      "徐昌彪",
+      "虞继敏"
+    ],
+    "recall": 0.6,
+    "precision": 0.6
+  },
+  "reviewers": [
+    {
+      "name": "孙克辉",
+      "email": "kehui@csu.edu.cn",
+      "matched_paper": "",
+      "reason": "研究关键词直接包含「简化Lorenz系统」「分数阶微积分」「混沌」「超混沌」「吸引子共存」「耦合同步」等，与本文「四维Lorenz-like系统的稳定性、分岔与混沌」主题高度契合。其在简化Lorenz系统及高阶混沌系统动力学分析方面有深厚积累，是评审Lorenz型系统分岔与混沌行为的理想人选。",
+      "org": "中南大学",
+      "hindex": 2.0,
+      "subject": "电子技术、通信技术;;自动化技术、计算机技术;;物理学;;电工技术;;交通运输",
+      "research_keywords": [
+        "分数阶微积分",
+        "混沌",
+        "忆阻器",
+        "超混沌",
+        "吸引子共存",
+        "扩频通信",
+        "简化Lorenz系统",
+        "微弱信号检测",
+        "高阶Duffing振子",
+        "耦合同步",
+        "spread spectrum communication",
+        "fractional calculus",
+        "chaos",
+        "memristor",
+        "hyperchaos",
+        "simplified Lorenz system",
+        "attractor coexisting",
+        "weak signal detection",
+        "higher-order Duffing oscillator",
+        "coupling synchronization"
+      ],
+      "pubs_last_2_years": 0,
+      "recent_papers": []
+    },
+    {
+      "name": "徐昌彪",
+      "email": "xuch@cqupt.edu.cn",
+      "matched_paper": "基于二维离散混沌系统和DNA的图像加密方案",
+      "reason": "研究关键词含「混沌系统」「共存吸引子」「自适应同步控制」「拓扑马蹄」「分数阶系统」「异结构同步」，与本文关键词「混沌系统」「同步控制」完全匹配。2024年仍有混沌动力学相关活跃发表（基于Arnold映射的2维离散超混沌系统），对Lorenz-like系统的共存吸引子与同步控制有系统研究。",
+      "org": "重庆邮电大学",
+      "hindex": 4.0,
+      "subject": "自动化技术、计算机技术;;电子技术、通信技术",
+      "research_keywords": [
+        "混沌系统",
+        "共存吸引子",
+        "自适应同步控制",
+        "拓扑马蹄",
+        "超密集网",
+        "系统容量",
+        "区间干扰",
+        "功率控制",
+        "分数阶系统",
+        "自适应控制",
+        "chaotic system",
+        "coexisting attractors",
+        "adaptive synchronization control",
+        "topological horseshoe",
+        "system capacity",
+        "power control",
+        "fractional order system",
+        "adaptive control",
+        "different structure synchronization",
+        "circuit implementation"
+      ],
+      "pubs_last_2_years": 0,
+      "recent_papers": [
+        {
+          "title": "基于二维离散混沌系统和DNA的图像加密方案",
+          "year": "2024"
+        }
+      ]
+    },
+    {
+      "name": "臧鸿雁",
+      "email": "zhylixiang@126.com",
+      "matched_paper": "",
+      "reason": "研究关键词含「混沌系统」「拓扑共轭」「平衡点」「Lyapunov指数」「混沌判据」「广义混沌同步」，其中拓扑共轭、平衡点稳定性、Lyapunov指数判据正是分析Lorenz-like系统稳定性与分岔的核心方法。其方向契合本文理论分析需求，能从动力学层面提供专业评审意见。",
+      "org": "北京科技大学",
+      "hindex": 2.0,
+      "subject": "自动化技术、计算机技术;;电子技术、通信技术;;物理学",
+      "research_keywords": [
+        "混沌系统",
+        "图像加密",
+        "均匀化",
+        "拓扑共轭",
+        "S盒",
+        "保密通信",
+        "广义混沌同步",
+        "平衡点",
+        "Lyapunov指数",
+        "混沌判据",
+        "Chaotic system",
+        "Homogenization",
+        "S-box",
+        "Image encryption",
+        "Topological conjugation",
+        "Secure communication",
+        "Generalized chaotic synchronization",
+        "chaotic system",
+        "equilibrium point",
+        "Lyapunov exponent"
+      ],
+      "pubs_last_2_years": 0,
+      "recent_papers": []
+    },
+    {
+      "name": "毛北行",
+      "email": "bxmao329@163.com",
+      "matched_paper": "变分数阶混沌系统有限时间自适应滑模同步",
+      "reason": "长期从事混沌同步控制研究，关键词「混沌同步」「滑模」「分数阶」「自适应」与本文高度匹配。2025–2026年连续发表变分数阶混沌系统有限时间自适应滑模同步方向论文，活跃度高，对混沌系统同步控制方法与稳定性分析有持续深入的研究。",
+      "org": "郑州航空工业管理学院",
+      "hindex": 4.0,
+      "subject": "物理学;;自动化技术、计算机技术;;数学",
+      "research_keywords": [
+        "混沌同步",
+        "滑模",
+        "分数阶",
+        "自适应",
+        "同步",
+        "分数阶系统",
+        "混沌",
+        "滑模同步",
+        "自适应滑模",
+        "多涡卷系统",
+        "chaos synchronization",
+        "sliding mode",
+        "fractional-order",
+        "synchronization",
+        "chaos",
+        "fractional order systems",
+        "self-apaptive",
+        "sliding mode synchronization",
+        "self-adaptive sliding mode",
+        "Genesio-Tesi systems"
+      ],
+      "pubs_last_2_years": 2,
+      "recent_papers": [
+        {
+          "title": "变分数阶混沌系统有限时间自适应滑模同步",
+          "year": "2026"
+        },
+        {
+          "title": "PMSM变分数阶混沌系统有限时间自适应滑模同步",
+          "year": "2025"
+        }
+      ]
+    },
+    {
+      "name": "虞继敏",
+      "email": "yujm@cqupt.edu.cn",
+      "matched_paper": "",
+      "reason": "研究关键词含「混沌系统」「时滞系统」「同步」「线性反馈控制」「未知参数」，与本文关键词「混沌系统」「同步控制」直接对应。其在时滞混沌系统反馈同步控制方面有专门研究，能从时滞与反馈控制角度对Lorenz-like系统的稳定性与同步提供建设性意见。",
+      "org": "重庆邮电大学",
+      "hindex": 3.0,
+      "subject": "自动化技术、计算机技术",
+      "research_keywords": [
+        "网络控制系统",
+        "分数阶",
+        "时滞系统",
+        "混沌系统",
+        "线性反馈控制",
+        "未知参数",
+        "同步",
+        "保成本控制",
+        "量化反馈",
+        "Lyapunov函数",
+        "fractional order",
+        "time-delay system",
+        "chaotic system",
+        "linear feedback control",
+        "unknown parameters",
+        "synchronization",
+        "Networked control systems (NCSs)",
+        "guaranteed cost control",
+        "quantized feedback",
+        "Lyapunov function"
+      ],
+      "pubs_last_2_years": 0,
+      "recent_papers": []
+    }
+  ]
+}

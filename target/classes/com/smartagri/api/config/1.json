@@ -1,0 +1,90 @@
+{
+  "code": 200,
+  "data": {
+    "videos": null,
+    "webPages": {
+      "someResultsRemoved": true,
+      "totalEstimatedMatches": 10000000,
+      "value": [
+        {
+          "dateLastCrawled": "2024-12-15T23:56:58Z",
+          "language": null,
+          "name": "「黄金精炼」黄金精炼公司黄页 - 顺企网",
+          "siteIcon": "https://th.bochaai.com/favicon?domain_url=https://b2b.11467.com/search/-9ec491d17cbe70bc.htm",
+          "snippet": "主营产品: 内销黄金,白金,白银,K金,珠宝,工艺品,礼品零售;首饰加工,改样,定样,以旧换新等维修,服务 地址: 东河区环城路 成立时间:2005-12-26 主营产品: 黄金精炼 加工,黄金,珠宝",
+          "url": "https://b2b.11467.com/search/-9ec491d17cbe70bc.htm",
+          "cachedPageUrl": null,
+          "displayUrl": "https://b2b.11467.com/search/-9ec491d17cbe70bc.htm",
+          "id": "https://api.bochaai.com/v1/#WebPages.0",
+          "isFamilyFriendly": null,
+          "isNavigational": null,
+          "siteName": "顺企网公司黄页",
+          "summary": null,
+          "datePublished": "2024-12-15T23:56:58+08:00"
+        },
+        {
+          "dateLastCrawled": "2022-05-07T00:25:07Z",
+          "language": null,
+          "name": "黄金提炼的技术方法",
+          "siteIcon": "https://th.bochaai.com/favicon?domain_url=http://www.guijinzb.com/news-detail/i-66.html",
+          "snippet": "黄金提炼 黄金精炼是指用于从矿物、金属和可回收产品(如珠宝废料和电子垃圾)中提取和分离贵金属的过程。金、银等贵金属通过精炼系统单独获得,纯度高。 根据黄金加工的数量和所需的纯度水平,提炼黄金的两种最常",
+          "url": "http://www.guijinzb.com/news-detail/i-66.html",
+          "cachedPageUrl": null,
+          "displayUrl": "http://www.guijinzb.com/news-detail/i-66.html",
+          "id": "https://api.bochaai.com/v1/#WebPages.1",
+          "isFamilyFriendly": null,
+          "isNavigational": null,
+          "siteName": "www.guijinzb.com",
+          "summary": null,
+          "datePublished": "2022-05-07T00:25:07+08:00"
+        },
+        {
+          "dateLastCrawled": "2022-05-07T03:44:13Z",
+          "language": null,
+          "name": "黄金提炼的技术方法",
+          "siteIcon": "https://th.bochaai.com/favicon?domain_url=http://guijinzb.com/news-detail/i-66.html",
+          "snippet": "黄金提炼 黄金精炼是指用于从矿物、金属和可回收产品(如珠宝废料和电子垃圾)中提取和分离贵金属的过程。金、银等贵金属通过精炼系统单独获得,纯度高。 根据黄金加工的数量和所需的纯度水平,提炼黄金的两种最常",
+          "url": "http://guijinzb.com/news-detail/i-66.html",
+          "cachedPageUrl": null,
+          "displayUrl": "http://guijinzb.com/news-detail/i-66.html",
+          "id": "https://api.bochaai.com/v1/#WebPages.2",
+          "isFamilyFriendly": null,
+          "isNavigational": null,
+          "siteName": "guijinzb.com",
+          "summary": null,
+          "datePublished": "2022-05-07T03:44:13+08:00"
+        },
+        {
+          "dateLastCrawled": "2025-01-20T14:20:10Z",
+          "language": null,
+          "name": "贵金属精炼",
+          "siteIcon": "https://th.bochaai.com/favicon?domain_url=http://guijinzb.com/solution/",
+          "snippet": "金精炼是指除去粗金中的杂质,产出纯金的过程,金精炼常见的提纯方法有金电解法和一般化学法,一般化学法与电解法相结合流程为:溶解→赶硝→水解→还原→净化→洗涤、烘干→熔炼→金电解→洗涤、烘干→铸锭。",
+          "url": "http://guijinzb.com/solution/",
+          "cachedPageUrl": null,
+          "displayUrl": "http://guijinzb.com/solution/",
+          "id": "https://api.bochaai.com/v1/#WebPages.3",
+          "isFamilyFriendly": null,
+          "isNavigational": null,
+          "siteName": "guijinzb.com",
+          "summary": null,
+          "datePublished": "2025-01-20T14:20:10+08:00"
+        }
+      ],
+      "webSearchUrl": "https://bochaai.com/search?q=黄金精炼"
+    },
+    "_type": "SearchResponse",
+    "images": {
+      "id": null,
+      "isFamilyFriendly": null,
+      "readLink": null,
+      "value": [],
+      "webSearchUrl": null
+    },
+    "queryContext": {
+      "originalQuery": "黄金精炼"
+    }
+  },
+  "log_id": "870c39ba8f26c651",
+  "msg": null
+}
