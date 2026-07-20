@@ -11,10 +11,22 @@ const ENDPOINTS = {
 };
 
 const ROLE_COLORS = {
-  first: "#0a6b6f",
-  corresponding: "#1d6b4f",
-  other: "#94a3b8",
+  first: "#1a73e8",
+  corresponding: "#e37400",
+  other: "#9aa0a6",
 };
+
+/** @type {any} */
+let lastPubsData = null;
+/** @type {number | null} */
+let pubsFilterYear = null;
+
+const PUBS_LINK_ICON = `
+  <svg class="pubs-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42L17.59 5H14V3z"/>
+    <path d="M5 5h6v2H7v10h10v-4h2v6H5V5z"/>
+  </svg>
+`;
 
 const form = document.getElementById("recommendForm");
 const directSearchBtn = document.getElementById("directSearchBtn");
@@ -242,6 +254,12 @@ function parseSubjectList(subject) {
     .filter(Boolean);
 }
 
+/** 学科展示：去掉多余标点，顿号分隔 */
+function formatSubjectText(subject) {
+  const items = parseSubjectList(subject);
+  return items.length ? items.join("、") : "-";
+}
+
 function renderSubjectTags(subject) {
   const items = parseSubjectList(subject);
   if (!items.length) {
@@ -318,14 +336,14 @@ function renderStage1Row(item) {
             class="table-action-btn stage1-pubs-btn"
             data-rank="${item.rank}"
             ${canViewPubs ? "" : "disabled"}
-          >发文</button>
+          >历史发文</button>
           <button
             type="button"
             class="table-action-btn stage1-copy-btn"
             data-rank="${item.rank}"
             title="${hasEmail ? escapeHtml(item.email) : "无邮箱"}"
             ${hasEmail ? "" : "disabled"}
-          >邮箱</button>
+          >复制邮箱</button>
         </div>
       </div>
     </li>
@@ -370,8 +388,6 @@ function renderStage1(thinking) {
   setStageCard("stage1", "done");
   setStageLabel(stage1State, `${lastStage1Experts.length} 位`);
 
-  const hasAnyEmail = lastStage1Experts.some((item) => item.email?.trim());
-
   const selectedCount = thinking.selected_count ?? 0;
 
   stage1Body.innerHTML = `
@@ -392,11 +408,6 @@ function renderStage1(thinking) {
         <input type="checkbox" id="stage1SelectedOnly" />
         仅入选
       </label>
-      ${
-        hasAnyEmail
-          ? `<button type="button" class="copy-all-btn" id="copyAllStage1Emails">复制邮箱</button>`
-          : ""
-      }
       <span class="stage1-count" id="stage1Count"></span>
     </div>
     <div class="stage1-scroll">
@@ -548,7 +559,7 @@ function renderResult(reviewers) {
               <dl class="reviewer-meta-grid">
                 <div>
                   <dt>学科</dt>
-                  <dd>${escapeHtml(item.subject?.trim() || "-")}</dd>
+                  <dd>${escapeHtml(formatSubjectText(item.subject))}</dd>
                 </div>
                 <div>
                   <dt>研究领域</dt>
@@ -661,13 +672,8 @@ function handleEvent(event) {
         if (canAutoRefineKeywords()) {
           pendingAutoRefine = true;
           abortReason = "low-selected";
-          setConnectionStatus(
-            "running",
-            `入选 ${selectedCount} 人（< ${STAGE1_MIN_SELECTED}），正在重新提炼关键词…`
-          );
-          renderStage1Empty(
-            `入选 ${selectedCount} 人，不足 ${STAGE1_MIN_SELECTED} 人，正在重新提炼关键词…`
-          );
+          setConnectionStatus("running", "正在重新提炼关键词…");
+          renderStage1Empty("正在重新提炼关键词…");
           abortController?.abort();
           break;
         }
@@ -676,26 +682,16 @@ function handleEvent(event) {
         pendingAutoRefine = false;
         const meta = paperMetaForRefine || readFormFields();
         if (!meta?.title?.trim()) {
-          setConnectionStatus(
-            "error",
-            `入选仅 ${selectedCount} 人，不足 ${STAGE1_MIN_SELECTED} 人`
-          );
-          renderStage1Empty(
-            `入选仅 ${selectedCount} 人，少于 ${STAGE1_MIN_SELECTED} 人。缺少论文标题，无法自动重新提炼。`
-          );
-          resultBody.innerHTML = `<div class="error-box">阶段一入选仅 ${selectedCount} 人，少于 ${STAGE1_MIN_SELECTED} 人。当前缺少论文标题，无法自动重新提炼。请切换到智能检索，或修改关键词后重试。</div>`;
+          setConnectionStatus("error", "召回不足，请调整关键词后重试");
+          renderStage1Empty("暂无足够匹配的候选专家，请调整关键词后重试");
+          resultBody.innerHTML = `<div class="error-box">候选专家不足。当前缺少论文标题，无法自动重新提炼。请切换到智能检索，或修改关键词后重试。</div>`;
         } else {
-          setConnectionStatus(
-            "error",
-            `入选仅 ${selectedCount} 人，已重试 ${autoRefineCount} 次仍不足 ${STAGE1_MIN_SELECTED} 人`
-          );
-          renderStage1Empty(
-            `入选仅 ${selectedCount} 人，已重试 ${autoRefineCount} 次仍不足 ${STAGE1_MIN_SELECTED} 人。`
-          );
-          resultBody.innerHTML = `<div class="error-box">阶段一入选仅 ${selectedCount} 人，少于 ${STAGE1_MIN_SELECTED} 人。已自动重新提炼 ${autoRefineCount} 次仍不足，请调整标题、摘要或原始关键词后重试。</div>`;
+          setConnectionStatus("error", "召回不足，请调整后重试");
+          renderStage1Empty("暂无足够匹配的候选专家，请调整后重试");
+          resultBody.innerHTML = `<div class="error-box">候选专家不足，已自动重新提炼 ${autoRefineCount} 次仍未达标，请调整标题、摘要或原始关键词后重试。</div>`;
         }
         setStageCard("stage1", "done");
-        setStageLabel(stage1State, `入选 ${selectedCount}`);
+        setStageLabel(stage1State, "未达标");
         abortController?.abort();
         break;
       }
@@ -988,6 +984,8 @@ function startSmartRecommend() {
 }
 
 function openPubsModal(expert) {
+  pubsFilterYear = null;
+  lastPubsData = null;
   pubsModalTitle.textContent = "历史发文统计";
   pubsModalSubtitle.textContent = `${expert.name}${expert.org ? ` · ${expert.org}` : ""} · 关键词 ${activePaperKeywords}`;
   pubsModal.classList.remove("hidden");
@@ -997,9 +995,17 @@ function openPubsModal(expert) {
 function closePubsModal() {
   pubsModal.classList.add("hidden");
   document.body.style.overflow = "";
+  pubsFilterYear = null;
+  lastPubsData = null;
 }
 
-function renderPubsChartSvg(series) {
+function setPubsYearFilter(year) {
+  const next = year == null || Number.isNaN(Number(year)) ? null : Number(year);
+  pubsFilterYear = pubsFilterYear === next ? null : next;
+  if (lastPubsData) renderPubsStats(lastPubsData);
+}
+
+function renderPubsChartSvg(series, selectedYear = null) {
   const years = series.years || [];
   const first = series.first || [];
   const corresponding = series.corresponding || [];
@@ -1019,6 +1025,7 @@ function renderPubsChartSvg(series) {
   const maxY = Math.max(...totals, 1);
   const barW = Math.min(36, (chartW / years.length) * 0.62);
   const gap = chartW / years.length;
+  const hitW = Math.max(barW + 10, gap * 0.85);
 
   const ticks = 4;
   const grid = [];
@@ -1034,7 +1041,9 @@ function renderPubsChartSvg(series) {
   const bars = years
     .map((year, i) => {
       const x = pad.left + gap * i + (gap - barW) / 2;
+      const hitX = pad.left + gap * i + (gap - hitW) / 2;
       let y = pad.top + chartH;
+      const selected = selectedYear != null && Number(year) === Number(selectedYear);
       const segments = [
         { key: "other", value: other[i] || 0, color: ROLE_COLORS.other },
         { key: "corresponding", value: corresponding[i] || 0, color: ROLE_COLORS.corresponding },
@@ -1047,20 +1056,24 @@ function renderPubsChartSvg(series) {
           y -= h;
           const label =
             seg.key === "first" ? "一作" : seg.key === "corresponding" ? "通讯" : "其他";
-          return `<rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="${seg.color}" rx="2">
-            <title>${year} · ${label}：${seg.value}</title>
+          return `<rect class="pubs-bar-seg" x="${x}" y="${y}" width="${barW}" height="${h}" fill="${seg.color}" rx="2">
+            <title>${year} · ${label}：${seg.value}（点击筛选）</title>
           </rect>`;
         })
         .join("");
       return `
-        ${rects}
-        <text x="${x + barW / 2}" y="${height - 14}" text-anchor="middle" fill="#6b7c90" font-size="11">${year}</text>
+        <g class="pubs-bar-group${selected ? " is-selected" : ""}" data-year="${year}" role="button" tabindex="0">
+          <rect class="pubs-bar-hit" x="${hitX}" y="${pad.top}" width="${hitW}" height="${chartH}" rx="4" />
+          ${rects}
+          <text x="${x + barW / 2}" y="${height - 14}" text-anchor="middle" fill="${selected ? "#174ea6" : "#6b7c90"}" font-size="11" font-weight="${selected ? "700" : "400"}">${year}</text>
+        </g>
       `;
     })
     .join("");
 
   return `
     <div class="pubs-chart-wrap">
+      <p class="pubs-chart-hint">点击柱子可按年份筛选论文列表${selectedYear != null ? ` · 当前：${selectedYear}` : ""}</p>
       <svg class="pubs-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="历史发文柱状图">
         ${grid.join("")}
         ${bars}
@@ -1069,29 +1082,55 @@ function renderPubsChartSvg(series) {
   `;
 }
 
-function renderAuthorNames(authors, targetName, sequence) {
+function renderAuthorNames(authors, targetName, sequence, role = "other") {
   const names = authors || [];
   if (!names.length) return `<span class="muted">作者信息缺失</span>`;
+  const shouldHighlight = role === "first" || role === "corresponding";
   return names
     .map((name, index) => {
       const isTarget =
         String(name).replace(/\s+/g, "") === String(targetName || "").replace(/\s+/g, "") ||
         (sequence != null && index + 1 === Number(sequence));
-      return isTarget
-        ? `<strong class="author-highlight">${escapeHtml(name)}</strong><span class="author-seq-tag">第${sequence ?? index + 1}作者</span>`
-        : `<span>${escapeHtml(name)}</span>`;
+      if (!isTarget) {
+        return `<span>${escapeHtml(name)}</span>`;
+      }
+      if (!shouldHighlight) {
+        return `<span class="author-plain">${escapeHtml(name)}</span>`;
+      }
+      const roleTag =
+        role === "first"
+          ? "第一作者"
+          : "通讯作者";
+      return `<strong class="author-highlight role-${role}">${escapeHtml(name)}</strong><span class="author-seq-tag role-${role}">${roleTag}</span>`;
     })
     .join('<span class="author-sep">，</span>');
 }
 
-function renderPubsPaperList(papers, authorName) {
-  const items = papers || [];
+function renderPubsPaperList(papers, authorName, filterYear = null) {
+  const all = papers || [];
+  const items =
+    filterYear == null
+      ? all
+      : all.filter((paper) => Number(paper.year) === Number(filterYear));
+  const filterLabel =
+    filterYear == null
+      ? `<span class="muted">（最近优先 · 点击柱状图按年筛选）</span>`
+      : `<span class="pubs-year-filter">
+          ${filterYear} 年
+          <button type="button" class="pubs-year-clear" data-clear-year>全部年份</button>
+        </span>`;
+
   if (!items.length) {
-    return `<p class="placeholder">暂无论文列表</p>`;
+    return `
+      <div class="pubs-paper-list">
+        <h4 class="pubs-paper-title">论文列表 ${filterLabel}</h4>
+        <p class="placeholder">${filterYear == null ? "暂无论文列表" : `${filterYear} 年暂无匹配论文`}</p>
+      </div>
+    `;
   }
   return `
     <div class="pubs-paper-list">
-      <h4 class="pubs-paper-title">论文列表 <span class="muted">（最近优先）</span></h4>
+      <h4 class="pubs-paper-title">论文列表 ${filterLabel} · ${items.length} 篇</h4>
       ${items
         .map((paper) => {
           const roleClass =
@@ -1106,17 +1145,20 @@ function renderPubsPaperList(papers, authorName) {
           ]
             .filter(Boolean)
             .join(" · ");
-          const titleHtml = paper.article_url
-            ? `<a href="${escapeHtml(paper.article_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(paper.title || "无标题")}</a>`
-            : escapeHtml(paper.title || "无标题");
+          const linkHtml = paper.article_url
+            ? `<a class="pubs-paper-link" href="${escapeHtml(paper.article_url)}" target="_blank" rel="noopener noreferrer" title="打开原文" aria-label="打开原文">${PUBS_LINK_ICON}</a>`
+            : "";
           return `
             <article class="pubs-paper-item ${roleClass}">
               <div class="pubs-paper-head">
                 <span class="pubs-role-badge ${roleClass}">${escapeHtml(paper.role_label || "作者")}</span>
                 <span class="pubs-paper-meta">${escapeHtml(meta || "-")}</span>
               </div>
-              <h5 class="pubs-paper-name">${titleHtml}</h5>
-              <p class="pubs-paper-authors">${renderAuthorNames(paper.authors, authorName, paper.author_sequence)}</p>
+              <div class="pubs-paper-name-row">
+                <h5 class="pubs-paper-name">${escapeHtml(paper.title || "无标题")}</h5>
+                ${linkHtml}
+              </div>
+              <p class="pubs-paper-authors">${renderAuthorNames(paper.authors, authorName, paper.author_sequence, paper.role)}</p>
             </article>
           `;
         })
@@ -1126,6 +1168,7 @@ function renderPubsPaperList(papers, authorName) {
 }
 
 function renderPubsStats(data) {
+  lastPubsData = data;
   const totalMatched =
     (data.totals?.first || 0) +
     (data.totals?.corresponding || 0) +
@@ -1145,9 +1188,9 @@ function renderPubsStats(data) {
       <span class="pubs-legend-item"><span class="pubs-legend-swatch" style="background:${ROLE_COLORS.corresponding}"></span>通讯</span>
       <span class="pubs-legend-item"><span class="pubs-legend-swatch" style="background:${ROLE_COLORS.other}"></span>其他</span>
     </div>
-    ${renderPubsChartSvg(data.series || {})}
+    ${renderPubsChartSvg(data.series || {}, pubsFilterYear)}
     <p class="pubs-note">${escapeHtml(data.role_note || "")}</p>
-    ${renderPubsPaperList(data.papers || [], data.author)}
+    ${renderPubsPaperList(data.papers || [], data.author, pubsFilterYear)}
   `;
 }
 
@@ -1217,6 +1260,24 @@ stopBtn.addEventListener("click", () => {
 pubsModalClose.addEventListener("click", closePubsModal);
 pubsModal.addEventListener("click", (e) => {
   if (e.target === pubsModal) closePubsModal();
+});
+pubsModalBody.addEventListener("click", (e) => {
+  if (e.target.closest("[data-clear-year]")) {
+    pubsFilterYear = null;
+    if (lastPubsData) renderPubsStats(lastPubsData);
+    return;
+  }
+  const bar = e.target.closest(".pubs-bar-group");
+  if (bar?.dataset.year) {
+    setPubsYearFilter(bar.dataset.year);
+  }
+});
+pubsModalBody.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const bar = e.target.closest(".pubs-bar-group");
+  if (!bar?.dataset.year) return;
+  e.preventDefault();
+  setPubsYearFilter(bar.dataset.year);
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !pubsModal.classList.contains("hidden")) {
@@ -1295,16 +1356,6 @@ stage1Body.addEventListener("click", async (e) => {
     const rank = Number(copyBtn.dataset.rank);
     const expert = lastStage1Experts.find((item) => item.rank === rank);
     await copyText(expert?.email, copyBtn);
-    return;
-  }
-
-  const copyAllBtn = e.target.closest("#copyAllStage1Emails");
-  if (copyAllBtn) {
-    const emails = lastStage1Experts
-      .map((item) => item.email?.trim())
-      .filter(Boolean)
-      .join("\n");
-    await copyText(emails, copyAllBtn);
   }
 });
 
