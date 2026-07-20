@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CSCD 审稿人推荐 Agent</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <title>CSCD 审稿人推荐</title>
+  <link rel="stylesheet" href="/styles.css?v=20260720o" />
 </head>
 <body>
   <div class="layout">
     <header class="header">
       <div class="header-inner">
         <div>
-          <p class="eyebrow">CSCD Reviewer Agent</p>
-          <h1>审稿人推荐智能体</h1>
-          <p class="subtitle">三阶段流水线：硬过滤 → 数据补全 → LLM 语义精筛</p>
+          <div class="header-title-row">
+            <p class="eyebrow">CSCD</p>
+            <h1>审稿人推荐Agent</h1>
+          </div>
+          <p class="subtitle">候选匹配 · AI 精荐</p>
         </div>
         <div class="status-pill" id="connectionStatus">
           <span class="dot"></span>
@@ -24,74 +26,78 @@
 
     <main class="main">
       <section class="panel form-panel">
-        <h2>论文信息</h2>
-        <form id="recommendForm">
-          <label>
-            <span>论文标题 <em>*</em></span>
-            <input
-              type="text"
-              name="title"
-              required
-              placeholder="例如：基于深度学习的医学图像分割研究"
-              value="基于深度学习的医学图像分割研究"
-            />
-          </label>
-
-          <label>
-            <span>论文摘要</span>
-            <textarea
-              name="abstract"
-              rows="5"
-              placeholder="粘贴论文摘要，用于提炼更准确的检索关键词"
-            ></textarea>
-          </label>
-
-          <label>
-            <span>原始关键词 <em>*</em></span>
-            <input
-              type="text"
-              name="keywords"
-              required
-              placeholder="逗号分隔，例如：医学图像,图像分割"
-              value="医学图像,图像分割"
-            />
-          </label>
-
-          <label>
-            <span>原作者机构</span>
-            <input
-              type="text"
-              name="author_org"
-              placeholder="填写后触发 COI 机构熔断"
-              value="浙江大学"
-            />
-          </label>
-
-          <label>
-            <span>补充说明</span>
-            <textarea
-              name="extra"
-              rows="3"
-              placeholder="可选：研究方向、期刊要求等"
-            ></textarea>
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" id="submitBtn">提炼关键词</button>
-            <button type="button" id="stopBtn" class="secondary" disabled>停止</button>
+        <div class="form-panel-scroll">
+          <h2>检索方式</h2>
+          <div class="mode-switch" role="tablist" aria-label="检索方式">
+            <button type="button" class="mode-tab active" data-mode="direct" id="modeDirectBtn">
+              直接检索
+            </button>
+            <button type="button" class="mode-tab" data-mode="refine" id="modeRefineBtn">
+              智能检索
+            </button>
           </div>
-        </form>
+          <p class="mode-hint" id="modeHint">填写关键词后直接开始检索</p>
 
-        <div class="keyword-confirm hidden" id="keywordConfirm">
-          <h3>确认检索关键词</h3>
-          <p class="keyword-reasoning" id="keywordReasoning"></p>
-          <label>
-            <span>提炼结果（可手动修改，逗号分隔）</span>
-            <input type="text" id="confirmedKeywords" />
-          </label>
-          <div class="form-actions">
-            <button type="button" id="confirmKeywordsBtn" class="primary-btn">确认并开始推荐</button>
-            <button type="button" id="cancelKeywordsBtn" class="secondary">返回修改</button>
+          <form id="recommendForm" data-mode="direct">
+            <label class="refine-only hidden">
+              <span>论文标题 <em>*</em></span>
+              <input
+                type="text"
+                name="title"
+                placeholder="例如：四维Lorenz-like 系统的稳定性、分岔与混沌"
+                value="四维Lorenz-like 系统的稳定性、分岔与混沌"
+              />
+            </label>
+
+            <label class="refine-only hidden">
+              <span>论文摘要</span>
+              <textarea
+                name="abstract"
+                rows="5"
+                placeholder="粘贴论文摘要，帮助提炼检索关键词"
+              >为了解混沌现象的本质与发生机理，研究了一个四维Lorenz-like系统的动力学。首先，根据微分方程稳定性理论，研究了系统奇点及其稳定性。其次，研究了系统的分岔与混沌现象，数值模拟生动的揭示了系统由分岔通向混沌的道路。根据Lagrange稳定性理论系统全局指数吸引集的显式表达式。最后，为研究混沌系统在保密通信等领域中的应用，设计了新型的自适应同步方案实现了混沌的全局同步。</textarea>
+            </label>
+
+            <label class="field-keywords">
+              <span id="keywordsLabel">检索关键词 <em>*</em></span>
+              <input
+                type="text"
+                name="keywords"
+                placeholder="逗号分隔，例如：混沌系统,同步控制"
+                value="混沌系统,同步控制"
+              />
+              <small class="field-tip" id="keywordsTip">直接用于 CSCD 学者检索</small>
+            </label>
+
+            <label>
+              <span>原作者机构</span>
+              <input
+                type="text"
+                name="author_org"
+                placeholder="选填，填写后触发 COI 机构熔断"
+                value="浙江大学"
+              />
+            </label>
+
+            <div class="form-actions">
+              <button type="button" id="directSearchBtn" class="primary-btn">开始检索</button>
+              <button type="button" id="refineBtn" class="primary-btn hidden">开始智能检索</button>
+              <button type="button" id="stopBtn" class="secondary" disabled>停止</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="refined-keywords-panel hidden" id="refinedKeywordsPanel">
+          <button type="button" class="refined-keywords-head" id="refinedKeywordsToggle" aria-expanded="true">
+            <span class="refined-keywords-title-row">
+              <h3>提炼后关键词</h3>
+              <span class="refined-keywords-used" id="refinedKeywordsUsed">用于检索</span>
+            </span>
+            <span class="refined-keywords-toggle-label" id="refinedKeywordsToggleLabel">收起</span>
+          </button>
+          <div class="refined-keywords-body" id="refinedKeywordsBody">
+            <div class="kw-tags refined-kw-tags" id="refinedKeywordsTags"></div>
+            <p class="refined-keywords-reasoning hidden" id="refinedKeywordsReasoning"></p>
           </div>
         </div>
       </section>
@@ -100,11 +106,8 @@
         <div class="output-header">
           <h2>推荐过程</h2>
           <div class="stage-tabs" id="stageTabs">
-            <button type="button" class="tab active" data-stage="all">全部</button>
-            <button type="button" class="tab" data-stage="stage1">阶段一</button>
-            <button type="button" class="tab" data-stage="stage2">阶段二</button>
-            <button type="button" class="tab" data-stage="stage3">阶段三</button>
-            <button type="button" class="tab" data-stage="result">结果</button>
+            <button type="button" class="tab active" data-stage="stage1">候选专家</button>
+            <button type="button" class="tab" data-stage="result">AI推荐结果</button>
           </div>
         </div>
 
@@ -113,41 +116,41 @@
             <div class="stage-head">
               <span class="stage-badge">1</span>
               <div>
-                <h3>硬过滤与粗筛</h3>
-                <p class="stage-desc">召回专家 · COI 熔断 · 重合度阈值筛选</p>
+                <h3>候选专家</h3>
+                <p class="stage-desc">关键词召回 · 利益回避 · 相关度</p>
               </div>
               <span class="stage-state" id="stage1State">等待中</span>
             </div>
             <div class="stage-body" id="stage1Body">
-              <p class="placeholder">提交论文信息后开始…</p>
+              <p class="placeholder">提交后开始召回…</p>
             </div>
           </article>
 
-          <article class="stage-card idle" data-stage="stage2">
+          <article class="stage-card idle hidden" data-stage="stage2" aria-hidden="true">
             <div class="stage-head">
               <span class="stage-badge">2</span>
               <div>
-                <h3>学者背景补全</h3>
-                <p class="stage-desc">发文统计 · activity_score</p>
+                <h3>背景补全</h3>
+                <p class="stage-desc">发文 · 活跃度</p>
               </div>
               <span class="stage-state" id="stage2State">等待中</span>
             </div>
             <div class="stage-body" id="stage2Body">
-              <p class="placeholder">等待阶段一完成…</p>
+              <p class="placeholder">后台进行中…</p>
             </div>
           </article>
 
-          <article class="stage-card idle" data-stage="stage3">
+          <article class="stage-card idle hidden" data-stage="stage3" aria-hidden="true">
             <div class="stage-head">
               <span class="stage-badge">3</span>
               <div>
-                <h3>LLM 语义精筛</h3>
-                <p class="stage-desc">模型思考 · JSON 精筛</p>
+                <h3>语义精筛</h3>
+                <p class="stage-desc">模型推理</p>
               </div>
               <span class="stage-state" id="stage3State">等待中</span>
             </div>
             <div class="stage-body" id="stage3Body">
-              <p class="placeholder">等待阶段二完成…</p>
+              <p class="placeholder">后台进行中…</p>
             </div>
           </article>
 
@@ -155,13 +158,13 @@
             <div class="stage-head">
               <span class="stage-badge">✓</span>
               <div>
-                <h3>推荐结果</h3>
-                <p class="stage-desc">3–5 位审稿人</p>
+                <h3>AI推荐结果</h3>
+                <p class="stage-desc">精选 3–5 位</p>
               </div>
               <span class="stage-state" id="resultState">等待中</span>
             </div>
             <div class="stage-body" id="resultBody">
-              <p class="placeholder">推荐完成后展示…</p>
+              <p class="placeholder">精荐完成后展示…</p>
             </div>
           </article>
         </div>
@@ -184,6 +187,6 @@
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=20260720o"></script>
 </body>
 </html>

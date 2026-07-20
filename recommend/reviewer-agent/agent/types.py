@@ -50,6 +50,32 @@ class EnrichedCandidate:
     fusion_score: float = 0.0
 
 
+def reviewer_to_dict(candidate: ReviewerCandidate) -> Dict[str, Any]:
+    return {
+        "id": candidate.id,
+        "name": candidate.name,
+        "org": candidate.org,
+        "email": candidate.email,
+        "hindex": candidate.hindex,
+        "research_keywords": candidate.research_keywords,
+        "subject": candidate.subject,
+        "overlap_score": candidate.overlap_score,
+    }
+
+
+def reviewer_from_dict(data: Dict[str, Any]) -> ReviewerCandidate:
+    return ReviewerCandidate(
+        id=str(data.get("id") or ""),
+        name=str(data.get("name") or "").strip(),
+        org=str(data.get("org") or "").strip(),
+        email=str(data.get("email") or "").strip(),
+        hindex=float(data.get("hindex") or 0.0),
+        research_keywords=list(data.get("research_keywords") or []),
+        subject=str(data.get("subject") or "").strip(),
+        overlap_score=float(data.get("overlap_score") or 0.0),
+    )
+
+
 def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
     keyword_text = raw.get("keyword") or ""
     keywords = [

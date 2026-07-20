@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 
 class RecommendRequest(BaseModel):
-    title: str = Field(..., min_length=1, description="待审论文标题")
+    title: str = Field(default="", description="待审论文标题（智能提炼时建议填写）")
     keywords: str = Field(..., min_length=1, description="论文关键词，逗号分隔")
     abstract: str = Field(default="", description="论文摘要（选填）")
     author_org: str = Field(default="", description="原作者机构（选填，触发 COI 熔断）")
@@ -19,6 +19,11 @@ class RefineKeywordsRequest(BaseModel):
     title: str = Field(..., min_length=1, description="待审论文标题")
     abstract: str = Field(default="", description="论文摘要（选填）")
     keywords: str = Field(default="", description="原始关键词，逗号分隔（选填）")
+    previous_keywords: str = Field(
+        default="",
+        description="上次用于检索的关键词（入选不足时重试提炼用）",
+    )
+    retry_note: str = Field(default="", description="重试原因说明")
 
 
 class RefineKeywordsResponse(BaseModel):

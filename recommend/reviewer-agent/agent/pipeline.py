@@ -149,9 +149,11 @@ def _build_stage2_thinking(
     }
 
 
-def run_stage1(paper: PaperInput, api_code: Optional[str] = None) -> Dict[str, Any]:
-    """阶段一：拉取候选人 → COI 熔断 → overlap 阈值筛选（可截断 Top N）。"""
-    all_candidates = fetch_reviewers(paper.keywords, api_code)
+def run_stage1_from_candidates(
+    paper: PaperInput,
+    all_candidates: List[ReviewerCandidate],
+) -> Dict[str, Any]:
+    """阶段一：对已有候选人做 COI 熔断与 overlap 阈值筛选。"""
     after_coi = filter_coi(all_candidates, paper.author_org)
     paper_keywords = parse_keywords(paper.keywords)
     all_ranked, selected_candidates, stage1_meta = select_highest_overlap(
@@ -176,7 +178,14 @@ def run_stage1(paper: PaperInput, api_code: Optional[str] = None) -> Dict[str, A
         "selected": selected_candidates,
         "coi_filtered_count": len(all_candidates) - len(after_coi),
         "thinking": thinking,
+        "stage1_meta": stage1_meta,
     }
+
+
+def run_stage1(paper: PaperInput, api_code: Optional[str] = None) -> Dict[str, Any]:
+    """阶段一：拉取候选人 → COI 熔断 → overlap 阈值筛选（可截断 Top N）。"""
+    all_candidates = fetch_reviewers(paper.keywords, api_code)
+    return run_stage1_from_candidates(paper, all_candidates)
 
 
 def run_stage2(

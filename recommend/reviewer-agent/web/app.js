@@ -11,21 +11,27 @@ const ENDPOINTS = {
 };
 
 const ROLE_COLORS = {
-  first: "#2563eb",
-  corresponding: "#0f766e",
+  first: "#0a6b6f",
+  corresponding: "#1d6b4f",
   other: "#94a3b8",
 };
 
 const form = document.getElementById("recommendForm");
-const submitBtn = document.getElementById("submitBtn");
+const directSearchBtn = document.getElementById("directSearchBtn");
+const refineBtn = document.getElementById("refineBtn");
 const stopBtn = document.getElementById("stopBtn");
-const keywordConfirm = document.getElementById("keywordConfirm");
-const keywordReasoning = document.getElementById("keywordReasoning");
-const confirmedKeywordsInput = document.getElementById("confirmedKeywords");
-const confirmKeywordsBtn = document.getElementById("confirmKeywordsBtn");
-const cancelKeywordsBtn = document.getElementById("cancelKeywordsBtn");
 const connectionStatus = document.getElementById("connectionStatus");
 const stageTabs = document.getElementById("stageTabs");
+const modeHint = document.getElementById("modeHint");
+const keywordsLabel = document.getElementById("keywordsLabel");
+const keywordsTip = document.getElementById("keywordsTip");
+const modeDirectBtn = document.getElementById("modeDirectBtn");
+const modeRefineBtn = document.getElementById("modeRefineBtn");
+const refinedKeywordsPanel = document.getElementById("refinedKeywordsPanel");
+const refinedKeywordsToggle = document.getElementById("refinedKeywordsToggle");
+const refinedKeywordsToggleLabel = document.getElementById("refinedKeywordsToggleLabel");
+const refinedKeywordsTags = document.getElementById("refinedKeywordsTags");
+const refinedKeywordsReasoning = document.getElementById("refinedKeywordsReasoning");
 
 const stage1Body = document.getElementById("stage1Body");
 const stage2Body = document.getElementById("stage2Body");
@@ -44,17 +50,145 @@ const resultState = document.getElementById("resultState");
 
 let abortController = null;
 let pendingPayload = null;
-let activeFilter = "all";
+let activeFilter = "stage1";
 let lastReviewers = [];
 let lastStage1Experts = [];
 let activePaperKeywords = "";
 const stage2Progress = [];
 const pubsCache = new Map();
 let pubsRequestToken = 0;
+/** @type {"direct" | "refine"} */
+let formMode = "direct";
+
+/** 阶段一入选不足时自动重新提炼；达标后才展示阶段一 */
+const STAGE1_MIN_SELECTED = 14;
+const MAX_KEYWORD_AUTO_REFINE = 3;
+let autoRefineCount = 0;
+let pendingAutoRefine = false;
+/** @type {"user" | "low-selected" | null} */
+let abortReason = null;
+/** 用于重试提炼的论文元信息（原始关键词，非提炼结果） */
+let paperMetaForRefine = null;
+
+function setFormBusy(busy) {
+  directSearchBtn.disabled = busy;
+  refineBtn.disabled = busy;
+  modeDirectBtn.disabled = busy;
+  modeRefineBtn.disabled = busy;
+}
+
+function setFormMode(mode) {
+  formMode = mode === "refine" ? "refine" : "direct";
+  form.dataset.mode = formMode;
+
+  modeDirectBtn.classList.toggle("active", formMode === "direct");
+  modeRefineBtn.classList.toggle("active", formMode === "refine");
+
+  document.querySelectorAll(".refine-only").forEach((el) => {
+    el.classList.toggle("hidden", formMode !== "refine");
+  });
+  directSearchBtn.classList.toggle("hidden", formMode !== "direct");
+  refineBtn.classList.toggle("hidden", formMode !== "refine");
+
+  if (formMode === "direct") {
+    modeHint.textContent = "填写关键词后直接开始检索";
+    keywordsLabel.innerHTML = "检索关键词 <em>*</em>";
+    keywordsTip.textContent = "直接用于 CSCD 学者检索";
+    hideRefinedKeywords();
+  } else {
+    modeHint.textContent = "填写标题、摘要与关键词后，自动提炼并开始检索";
+    keywordsLabel.innerHTML = "原始关键词";
+    keywordsTip.textContent = "供智能提炼参考，不会被覆盖";
+  }
+}
+
+function parseKeywordList(text) {
+  return String(text || "")
+    .split(/[,，]/)
+    .map((word) => word.trim())
+    .filter(Boolean);
+}
+
+function setRefinedKeywordsCollapsed(collapsed) {
+  if (!refinedKeywordsPanel) return;
+  refinedKeywordsPanel.classList.toggle("collapsed", collapsed);
+  if (refinedKeywordsToggle) {
+    refinedKeywordsToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  }
+  if (refinedKeywordsToggleLabel) {
+    refinedKeywordsToggleLabel.textContent = collapsed ? "展开" : "收起";
+  }
+}
+
+function hideRefinedKeywords() {
+  refinedKeywordsPanel?.classList.add("hidden");
+  setRefinedKeywordsCollapsed(true);
+  if (refinedKeywordsTags) refinedKeywordsTags.innerHTML = "";
+  if (refinedKeywordsReasoning) {
+    refinedKeywordsReasoning.textContent = "";
+    refinedKeywordsReasoning.classList.add("hidden");
+  }
+}
+
+function showRefinedKeywords(keywordsText, reasoning = "") {
+  if (!refinedKeywordsPanel || !refinedKeywordsTags) return;
+  const words = parseKeywordList(keywordsText);
+  refinedKeywordsTags.innerHTML = words.length
+    ? words.map((kw) => `<span class="kw-tag">${escapeHtml(kw)}</span>`).join("")
+    : `<span class="muted">暂无</span>`;
+  if (refinedKeywordsReasoning) {
+    refinedKeywordsReasoning.textContent = reasoning ? `说明：${reasoning}` : "";
+    refinedKeywordsReasoning.classList.toggle("hidden", !reasoning);
+  }
+  setRefinedKeywordsCollapsed(true);
+  refinedKeywordsPanel.classList.remove("hidden");
+}
+
 
 function setConnectionStatus(kind, text) {
   connectionStatus.className = `status-pill ${kind}`;
   connectionStatus.querySelector("span:last-child").textContent = text;
+}
+
+function canAutoRefineKeywords() {
+  const meta = paperMetaForRefine || readFormFields();
+  return Boolean(meta?.title?.trim()) && autoRefineCount < MAX_KEYWORD_AUTO_REFINE;
+}
+
+/** 阶段一空态：未确定入选人数时展示基本界面 */
+function renderStage1Empty(statusText = "正在召回候选人…") {
+  lastStage1Experts = [];
+  setStageCard("stage1", "active");
+  setStageLabel(stage1State, "进行中");
+  stage1Body.innerHTML = `
+    <div class="stage1-toolbar">
+      <div class="stats-row stats-row-inline">
+        <span class="stat-chip">召回 -</span>
+        <span class="stat-chip">COI -</span>
+        <span class="stat-chip">入选 -</span>
+        <span class="stat-chip">≥ 0.50</span>
+      </div>
+      <input
+        type="search"
+        id="stage1Search"
+        class="stage1-search"
+        placeholder="搜索姓名、机构、学科、关键词…"
+        disabled
+      />
+      <label class="stage1-filter">
+        <input type="checkbox" id="stage1SelectedOnly" disabled />
+        仅入选
+      </label>
+      <span class="stage1-count" id="stage1Count">0 / 0</span>
+    </div>
+    <div class="stage1-scroll">
+      <ul class="stage1-list" id="stage1List">
+        <li class="author-row">
+          <p class="placeholder" style="margin:0;padding-left:0">${escapeHtml(statusText)}</p>
+        </li>
+      </ul>
+    </div>
+  `;
 }
 
 async function checkHealth() {
@@ -91,8 +225,8 @@ function pubsCacheKey(item) {
 }
 
 function renderKeywordTags(keywords) {
-  const items = (keywords || []).filter(Boolean).slice(0, 6);
-  if (!items.length) return `<span class="muted">-</span>`;
+  const items = (keywords || []).filter(Boolean).slice(0, 5);
+  if (!items.length) return "";
   return `
     <div class="kw-tags">
       ${items.map((kw) => `<span class="kw-tag" title="${escapeHtml(kw)}">${escapeHtml(kw)}</span>`).join("")}
@@ -100,64 +234,101 @@ function renderKeywordTags(keywords) {
   `;
 }
 
-function renderOverlapCell(score) {
+/** CSCD 学科常以 ;; / ; / 、 / ， 等分隔。 */
+function parseSubjectList(subject) {
+  return String(subject || "")
+    .split(/[;；、,，/|]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function renderSubjectTags(subject) {
+  const items = parseSubjectList(subject);
+  if (!items.length) {
+    return `<span class="author-subject-empty">-</span>`;
+  }
+  const full = items.join(" · ");
+  return `
+    <div class="subject-tags" title="${escapeHtml(full)}">
+      ${items
+        .map((name) => `<span class="subject-tag">${escapeHtml(name)}</span>`)
+        .join("")}
+    </div>
+  `;
+}
+
+function overlapTone(score) {
   const value = Number(score);
-  if (!Number.isFinite(value)) return `<span class="muted">-</span>`;
+  if (!Number.isFinite(value)) return { tone: "", label: "-", pct: 0 };
   const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
   let tone = "low";
   if (value >= 0.8) tone = "high";
   else if (value >= 0.5) tone = "mid";
-  return `
-    <div class="overlap-cell" title="重合度 ${value.toFixed(2)}">
-      <span class="overlap-value tone-${tone}">${value.toFixed(2)}</span>
-      <span class="overlap-bar"><i style="width:${pct}%"></i></span>
-    </div>
-  `;
+  return { tone, label: value.toFixed(2), pct };
 }
 
 function renderStage1Row(item) {
   const hasEmail = Boolean(item.email?.trim());
   const canViewPubs = Boolean(item.name?.trim() && activePaperKeywords);
   const org = item.org || "-";
-  const subject = item.subject || "-";
+  const overlap = overlapTone(item.overlap_score);
+  const subjectsHtml = renderSubjectTags(item.subject);
+  const keywordsHtml = renderKeywordTags(item.research_keywords);
   return `
-    <tr class="${item.selected ? "row-selected" : ""}">
-      <td class="col-name">
-        <div class="name-cell">
-          <span class="rank-pill">#${item.rank}</span>
-          <strong class="name-text" title="${escapeHtml(item.name || "")}">${escapeHtml(item.name || "-")}</strong>
+    <li class="author-row ${item.selected ? "is-selected" : ""}">
+      <div class="author-main">
+        <div class="author-identity">
+          <span class="author-rank">#${String(item.rank).padStart(2, "0")}</span>
+          <strong class="author-name" title="${escapeHtml(item.name || "")}">${escapeHtml(item.name || "-")}</strong>
         </div>
-      </td>
-      <td class="col-org" title="${escapeHtml(org)}">${escapeHtml(org)}</td>
-      <td class="col-subject" title="${escapeHtml(subject)}">${escapeHtml(subject)}</td>
-      <td class="col-overlap">${renderOverlapCell(item.overlap_score)}</td>
-      <td class="col-hindex">${item.hindex ?? "-"}</td>
-      <td class="col-keywords">${renderKeywordTags(item.research_keywords)}</td>
-      <td class="col-stage2">
-        ${
-          item.selected
-            ? '<span class="badge-selected">入选</span>'
-            : '<span class="badge-muted">未入选</span>'
-        }
-      </td>
-      <td class="col-actions">
-        <button
-          type="button"
-          class="table-action-btn stage1-pubs-btn"
-          data-rank="${item.rank}"
-          ${canViewPubs ? "" : "disabled"}
-        >发文</button>
-      </td>
-      <td class="col-actions">
-        <button
-          type="button"
-          class="table-action-btn stage1-copy-btn"
-          data-rank="${item.rank}"
-          title="${hasEmail ? escapeHtml(item.email) : "无邮箱"}"
-          ${hasEmail ? "" : "disabled"}
-        >邮箱</button>
-      </td>
-    </tr>
+        <div class="author-meta">
+          <span class="author-org" title="${escapeHtml(org)}">${escapeHtml(org)}</span>
+          ${subjectsHtml}
+        </div>
+        ${keywordsHtml ? `<div class="author-keywords">${keywordsHtml}</div>` : ""}
+      </div>
+      <div class="author-side">
+        <div class="author-metrics">
+          <div class="metric metric-overlap" title="关键词重合度 ${overlap.label}">
+            <div class="metric-row">
+              <span class="metric-label">关键词重合度</span>
+              <span class="metric-value ${overlap.tone ? `tone-${overlap.tone}` : ""}">${overlap.label}</span>
+            </div>
+            ${
+              overlap.tone
+                ? `<span class="overlap-mini"><i style="width:${overlap.pct}%"></i></span>`
+                : ""
+            }
+          </div>
+          <div class="metric" title="H 指数">
+            <div class="metric-row">
+              <span class="metric-label">H 指数</span>
+              <span class="metric-value">${item.hindex ?? "-"}</span>
+            </div>
+          </div>
+        </div>
+        <div class="author-side-foot">
+          ${
+            item.selected
+              ? '<span class="badge-selected">入选</span>'
+              : '<span class="badge-muted">未入选</span>'
+          }
+          <button
+            type="button"
+            class="table-action-btn stage1-pubs-btn"
+            data-rank="${item.rank}"
+            ${canViewPubs ? "" : "disabled"}
+          >发文</button>
+          <button
+            type="button"
+            class="table-action-btn stage1-copy-btn"
+            data-rank="${item.rank}"
+            title="${hasEmail ? escapeHtml(item.email) : "无邮箱"}"
+            ${hasEmail ? "" : "disabled"}
+          >邮箱</button>
+        </div>
+      </div>
+    </li>
   `;
 }
 
@@ -180,14 +351,16 @@ function getFilteredStage1Experts() {
 }
 
 function updateStage1TableBody() {
-  const tbody = document.getElementById("stage1TableBody");
+  const list = document.getElementById("stage1List");
   const countEl = document.getElementById("stage1Count");
-  if (!tbody) return;
+  if (!list) return;
 
   const filtered = getFilteredStage1Experts();
-  tbody.innerHTML = filtered.map(renderStage1Row).join("");
+  list.innerHTML = filtered.length
+    ? filtered.map(renderStage1Row).join("")
+    : `<li class="author-row"><p class="placeholder" style="margin:0;padding-left:0">没有匹配的作者</p></li>`;
   if (countEl) {
-    countEl.textContent = `显示 ${filtered.length} / ${lastStage1Experts.length} 人`;
+    countEl.textContent = `${filtered.length} / ${lastStage1Experts.length}`;
   }
 }
 
@@ -195,20 +368,20 @@ function renderStage1(thinking) {
   lastStage1Experts = thinking.experts || thinking.selected || [];
   pubsCache.clear();
   setStageCard("stage1", "done");
-  setStageLabel(stage1State, `${lastStage1Experts.length} 位专家`);
+  setStageLabel(stage1State, `${lastStage1Experts.length} 位`);
 
   const hasAnyEmail = lastStage1Experts.some((item) => item.email?.trim());
 
+  const selectedCount = thinking.selected_count ?? 0;
+
   stage1Body.innerHTML = `
-    <div class="stats-row">
-      <span class="stat-chip">API 召回 ${thinking.total_from_api ?? 0} 人</span>
-      <span class="stat-chip">COI 后 ${thinking.after_coi ?? 0} 人</span>
-      <span class="stat-chip">排序 ${thinking.ranked_count ?? lastStage1Experts.length} 人</span>
-      <span class="stat-chip">阈值 ≥ ${(thinking.min_overlap_threshold ?? 0.5).toFixed?.(2) ?? thinking.min_overlap_threshold ?? "0.5"}</span>
-      <span class="stat-chip">入选 ${thinking.selected_count ?? 0} 人</span>
-    </div>
-    <pre class="summary-block">${escapeHtml(thinking.summary || "")}</pre>
     <div class="stage1-toolbar">
+      <div class="stats-row stats-row-inline">
+        <span class="stat-chip">召回 ${thinking.total_from_api ?? 0}</span>
+        <span class="stat-chip">COI ${thinking.after_coi ?? 0}</span>
+        <span class="stat-chip">入选 ${selectedCount}</span>
+        <span class="stat-chip">≥ ${(thinking.min_overlap_threshold ?? 0.5).toFixed?.(2) ?? thinking.min_overlap_threshold ?? "0.5"}</span>
+      </div>
       <input
         type="search"
         id="stage1Search"
@@ -217,32 +390,17 @@ function renderStage1(thinking) {
       />
       <label class="stage1-filter">
         <input type="checkbox" id="stage1SelectedOnly" />
-        仅看入选（${thinking.selected_count ?? 0} 人）
+        仅入选
       </label>
       ${
         hasAnyEmail
-          ? `<button type="button" class="copy-all-btn" id="copyAllStage1Emails">复制全部邮箱</button>`
+          ? `<button type="button" class="copy-all-btn" id="copyAllStage1Emails">复制邮箱</button>`
           : ""
       }
       <span class="stage1-count" id="stage1Count"></span>
     </div>
-    <div class="table-scroll stage1-scroll">
-      <table class="candidate-table stage1-table">
-        <thead>
-          <tr>
-            <th class="col-name">姓名</th>
-            <th class="col-org">机构</th>
-            <th class="col-subject">学科</th>
-            <th class="col-overlap">重合度</th>
-            <th class="col-hindex">H 指数</th>
-            <th class="col-keywords">研究方向</th>
-            <th class="col-stage2">阶段二</th>
-            <th class="col-actions">发文</th>
-            <th class="col-actions">邮箱</th>
-          </tr>
-        </thead>
-        <tbody id="stage1TableBody"></tbody>
-      </table>
+    <div class="stage1-scroll">
+      <ul class="stage1-list" id="stage1List"></ul>
     </div>
   `;
   updateStage1TableBody();
@@ -350,7 +508,7 @@ function renderResearchField(item) {
   if (keywords.length) {
     return keywords.slice(0, 8).join("、");
   }
-  return item.subject || "-";
+  return "-";
 }
 
 function renderResult(reviewers) {
@@ -358,7 +516,7 @@ function renderResult(reviewers) {
   setStageCard("stage3", "done");
   setStageLabel(stage3State, "已完成");
   setStageCard("result", "done");
-  setStageLabel(resultState, `${reviewers.length} 位推荐`);
+  setStageLabel(resultState, `${reviewers.length} 位`);
 
   resultBody.innerHTML = `
     <div class="reviewer-grid">
@@ -388,6 +546,10 @@ function renderResult(reviewers) {
                 </div>
               </div>
               <dl class="reviewer-meta-grid">
+                <div>
+                  <dt>学科</dt>
+                  <dd>${escapeHtml(item.subject?.trim() || "-")}</dd>
+                </div>
                 <div>
                   <dt>研究领域</dt>
                   <dd>${escapeHtml(renderResearchField(item))}</dd>
@@ -458,79 +620,117 @@ function resetUI() {
   lastReviewers = [];
   lastStage1Experts = [];
   stage2Progress.length = 0;
-  ["stage1", "stage2", "stage3", "result"].forEach((stage) => {
-    setStageCard(stage, stage === "stage1" ? "active" : "idle");
-  });
-  setStageLabel(stage1State, "进行中");
+  setStageCard("stage2", "idle");
+  setStageCard("stage3", "idle");
+  setStageCard("result", "idle");
   setStageLabel(stage2State, "等待中");
   setStageLabel(stage3State, "等待中");
   setStageLabel(resultState, "等待中");
+  // 阶段二/三始终不对用户展示
+  document.querySelector('.stage-card[data-stage="stage2"]')?.classList.add("hidden");
+  document.querySelector('.stage-card[data-stage="stage3"]')?.classList.add("hidden");
 
-  stage1Body.innerHTML = `<p class="placeholder">正在拉取候选人…</p>`;
-  stage2Body.innerHTML = `<p class="placeholder">等待阶段一完成…</p>`;
-  stage3Body.innerHTML = `<p class="placeholder">等待阶段二完成…</p>`;
+  renderStage1Empty("正在召回候选人…");
   resultBody.innerHTML = `<p class="placeholder">推荐完成后展示…</p>`;
+  applyStageFilter("stage1");
 }
 
 function applyStageFilter(filter) {
-  activeFilter = filter;
+  const next = filter === "result" ? "result" : "stage1";
+  activeFilter = next;
   document.querySelectorAll(".tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.stage === filter);
+    tab.classList.toggle("active", tab.dataset.stage === next);
   });
   document.querySelectorAll(".stage-card").forEach((card) => {
     const stage = card.dataset.stage;
-    const visible = filter === "all" || filter === stage;
-    card.classList.toggle("hidden", !visible);
+    if (stage === "stage2" || stage === "stage3") {
+      card.classList.add("hidden");
+      return;
+    }
+    card.classList.toggle("hidden", stage !== next);
   });
 }
 
 function handleEvent(event) {
   switch (event.event) {
-    case "stage1_thinking":
-      renderStage1(event.thinking || {});
-      setStageCard("stage2", "active");
-      setStageLabel(stage2State, "进行中");
-      stage2Body.innerHTML = `<p class="placeholder">正在补全学者背景…</p>`;
+    case "stage1_thinking": {
+      const thinking = event.thinking || {};
+      const selectedCount = Number(thinking.selected_count ?? 0);
+
+      if (selectedCount < STAGE1_MIN_SELECTED) {
+        if (canAutoRefineKeywords()) {
+          pendingAutoRefine = true;
+          abortReason = "low-selected";
+          setConnectionStatus(
+            "running",
+            `入选 ${selectedCount} 人（< ${STAGE1_MIN_SELECTED}），正在重新提炼关键词…`
+          );
+          renderStage1Empty(
+            `入选 ${selectedCount} 人，不足 ${STAGE1_MIN_SELECTED} 人，正在重新提炼关键词…`
+          );
+          abortController?.abort();
+          break;
+        }
+
+        abortReason = "low-selected";
+        pendingAutoRefine = false;
+        const meta = paperMetaForRefine || readFormFields();
+        if (!meta?.title?.trim()) {
+          setConnectionStatus(
+            "error",
+            `入选仅 ${selectedCount} 人，不足 ${STAGE1_MIN_SELECTED} 人`
+          );
+          renderStage1Empty(
+            `入选仅 ${selectedCount} 人，少于 ${STAGE1_MIN_SELECTED} 人。缺少论文标题，无法自动重新提炼。`
+          );
+          resultBody.innerHTML = `<div class="error-box">阶段一入选仅 ${selectedCount} 人，少于 ${STAGE1_MIN_SELECTED} 人。当前缺少论文标题，无法自动重新提炼。请切换到智能检索，或修改关键词后重试。</div>`;
+        } else {
+          setConnectionStatus(
+            "error",
+            `入选仅 ${selectedCount} 人，已重试 ${autoRefineCount} 次仍不足 ${STAGE1_MIN_SELECTED} 人`
+          );
+          renderStage1Empty(
+            `入选仅 ${selectedCount} 人，已重试 ${autoRefineCount} 次仍不足 ${STAGE1_MIN_SELECTED} 人。`
+          );
+          resultBody.innerHTML = `<div class="error-box">阶段一入选仅 ${selectedCount} 人，少于 ${STAGE1_MIN_SELECTED} 人。已自动重新提炼 ${autoRefineCount} 次仍不足，请调整标题、摘要或原始关键词后重试。</div>`;
+        }
+        setStageCard("stage1", "done");
+        setStageLabel(stage1State, `入选 ${selectedCount}`);
+        abortController?.abort();
+        break;
+      }
+
+      renderStage1(thinking);
+      setConnectionStatus("running", "候选匹配完成，正在生成 AI 推荐结果…");
+      setStageCard("result", "active");
+      setStageLabel(resultState, "进行中");
+      resultBody.innerHTML = `<p class="placeholder">正在生成 AI 推荐结果…</p>`;
       break;
+    }
 
     case "stage2_thinking": {
+      // 阶段二在后台运行，不对用户展示
       const thinking = event.thinking || {};
       if (thinking.progress) {
         renderStage2Progress(thinking);
-        stage2Body.innerHTML = `
-          <div class="progress-list">
-            ${stage2Progress
-              .map(
-                (item) => `
-                  <div class="progress-item">
-                    <span><strong>${escapeHtml(item.name)}</strong> · ${escapeHtml(item.org)}</span>
-                    <span>${escapeHtml(item.progress)} · score ${item.activity_score}</span>
-                  </div>
-                `
-              )
-              .join("")}
-          </div>
-        `;
+        setConnectionStatus("running", "正在补全学者背景…");
       } else if (thinking.summary) {
-        renderStage2Summary(thinking);
-        setStageCard("stage3", "active");
-        setStageLabel(stage3State, "进行中");
-        stage3Body.innerHTML = `<div id="stage3Stream" class="thinking-stream"></div>`;
+        setConnectionStatus("running", "正在语义精筛…");
       }
       break;
     }
 
     case "stage3_thinking":
-      if (event.thinking?.summary) {
-        renderStage3Summary(event.thinking);
-      } else if (event.chunk) {
-        appendStage3Text(event.chunk);
+      // 阶段三在后台运行，不对用户展示
+      if (event.thinking?.summary || event.chunk) {
+        setConnectionStatus("running", "正在语义精筛…");
       }
       break;
 
     case "stage3_done":
       renderResult(event.reviewers || []);
       setConnectionStatus("ok", "推荐完成");
+      applyStageFilter("result");
       break;
 
     case "error":
@@ -545,11 +745,14 @@ function handleEvent(event) {
 
 async function startRecommend(payload) {
   resetUI();
-  setConnectionStatus("running", "推荐进行中…");
-  submitBtn.disabled = true;
+  setConnectionStatus("running", "检索进行中…");
+  setFormBusy(true);
   stopBtn.disabled = false;
+  pendingAutoRefine = false;
+  abortReason = null;
 
   abortController = new AbortController();
+  let shouldAutoRefine = false;
 
   try {
     const res = await fetch(ENDPOINTS.recommend, {
@@ -583,43 +786,95 @@ async function startRecommend(payload) {
         } catch (err) {
           console.warn("跳过无法解析的行:", line, err);
         }
+        if (pendingAutoRefine || abortReason === "low-selected") {
+          try {
+            await reader.cancel();
+          } catch {
+            /* ignore */
+          }
+          throw Object.assign(new Error("pipeline-stop"), { name: "AbortError" });
+        }
       }
     }
 
-    if (buffer.trim()) {
+    if (buffer.trim() && !pendingAutoRefine && abortReason !== "low-selected") {
       handleEvent(JSON.parse(buffer));
     }
   } catch (err) {
-    if (err.name !== "AbortError") {
+    if (err.name === "AbortError" && pendingAutoRefine && abortReason === "low-selected") {
+      pendingAutoRefine = false;
+      shouldAutoRefine = true;
+    } else if (err.name === "AbortError" && abortReason === "low-selected") {
+      // 入选不足且无法再重试，错误信息已在 handleEvent 中展示
+    } else if (err.name !== "AbortError") {
       renderError(err.message || String(err));
       setConnectionStatus("error", "运行失败");
     } else {
       setConnectionStatus("ok", "已停止");
     }
   } finally {
-    submitBtn.disabled = false;
-    stopBtn.disabled = true;
     abortController = null;
+    if (!shouldAutoRefine) {
+      setFormBusy(false);
+      stopBtn.disabled = true;
+    }
+  }
+
+  if (shouldAutoRefine) {
+    await retryByReRefineKeywords(payload);
   }
 }
 
-function showKeywordConfirm(keywords, reasoning) {
-  confirmedKeywordsInput.value = keywords.join(",");
-  keywordReasoning.textContent = reasoning ? `提炼说明：${reasoning}` : "";
-  keywordReasoning.classList.toggle("hidden", !reasoning);
-  keywordConfirm.classList.remove("hidden");
-  confirmedKeywordsInput.focus();
+function readFormFields() {
+  const data = new FormData(form);
+  return {
+    title: (data.get("title") || "").trim(),
+    abstract: (data.get("abstract") || "").trim(),
+    keywords: (data.get("keywords") || "").trim(),
+    author_org: (data.get("author_org") || "").trim(),
+    extra: (data.get("extra") || "").trim(),
+  };
 }
 
-function hideKeywordConfirm() {
-  keywordConfirm.classList.add("hidden");
-  pendingPayload = null;
+function buildRecommendPayload(keywords, { includePaperMeta = true } = {}) {
+  const fields = readFormFields();
+  return {
+    title: includePaperMeta ? fields.title : "",
+    abstract: includePaperMeta ? fields.abstract : "",
+    keywords: keywords || fields.keywords,
+    author_org: fields.author_org,
+    extra: includePaperMeta ? fields.extra : "",
+  };
 }
 
-async function refineKeywords(payload) {
-  submitBtn.disabled = true;
-  submitBtn.textContent = "提炼中…";
-  setConnectionStatus("running", "关键词提炼中…");
+function validateDirectForm() {
+  const fields = readFormFields();
+  if (!fields.keywords) {
+    form.elements.namedItem("keywords")?.focus();
+    setConnectionStatus("error", "请填写检索关键词");
+    return null;
+  }
+  return fields;
+}
+
+function validateRefineForm() {
+  const fields = readFormFields();
+  if (!fields.title) {
+    form.elements.namedItem("title")?.focus();
+    setConnectionStatus("error", "请填写论文标题");
+    return null;
+  }
+  return fields;
+}
+
+async function refineAndSearch(payload) {
+  setFormBusy(true);
+  refineBtn.textContent = "智能检索中…";
+  const isRetry = Boolean(payload.previous_keywords);
+  setConnectionStatus(
+    "running",
+    isRetry ? `正在重新提炼关键词（第 ${autoRefineCount} 次）…` : "正在提炼关键词…"
+  );
 
   try {
     const res = await fetch(ENDPOINTS.refineKeywords, {
@@ -627,8 +882,10 @@ async function refineKeywords(payload) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: payload.title,
-        abstract: payload.abstract,
-        keywords: payload.keywords,
+        abstract: payload.abstract || "",
+        keywords: payload.keywords || "",
+        previous_keywords: payload.previous_keywords || "",
+        retry_note: payload.retry_note || "",
       }),
     });
     if (!res.ok) {
@@ -641,16 +898,93 @@ async function refineKeywords(payload) {
       throw new Error(detail);
     }
     const data = await res.json();
-    pendingPayload = payload;
-    showKeywordConfirm(data.keywords || [], data.reasoning || "");
-    setConnectionStatus("ok", "请确认关键词");
+    const keywordList = (data.keywords || [])
+      .map((word) => String(word).trim())
+      .filter(Boolean);
+    const keywords = keywordList.join(",");
+    if (!keywords) throw new Error("提炼结果为空");
+
+    const recommendPayload = {
+      title: payload.title || "",
+      abstract: payload.abstract || "",
+      keywords,
+      author_org: payload.author_org || "",
+      extra: payload.extra || "",
+    };
+    pendingPayload = recommendPayload;
+    activePaperKeywords = keywords;
+    showRefinedKeywords(
+      keywords,
+      isRetry
+        ? `重新提炼（第 ${autoRefineCount} 次）：${data.reasoning || ""}`
+        : data.reasoning || ""
+    );
+    setConnectionStatus("running", "已提炼，开始检索…");
+    setFormBusy(false);
+    refineBtn.textContent = "开始智能检索";
+    await startRecommend(recommendPayload);
   } catch (err) {
-    renderError(`关键词提炼失败：${err.message || err}`);
-    setConnectionStatus("error", "提炼失败");
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "提炼关键词";
+    renderError(`智能检索失败：${err.message || err}`);
+    setConnectionStatus("error", "智能检索失败");
+    setFormBusy(false);
+    stopBtn.disabled = true;
+    refineBtn.textContent = "开始智能检索";
   }
+}
+
+async function retryByReRefineKeywords(payload) {
+  const meta = paperMetaForRefine || readFormFields();
+  if (!meta?.title?.trim()) {
+    setConnectionStatus("error", "入选不足且无法自动提炼（缺少论文标题）");
+    resultBody.innerHTML = `<div class="error-box">阶段一入选不足 ${STAGE1_MIN_SELECTED} 人，但缺少论文标题，无法自动重新提炼。请切换到智能检索或补充标题后重试。</div>`;
+    setFormBusy(false);
+    stopBtn.disabled = true;
+    return;
+  }
+
+  autoRefineCount += 1;
+  await refineAndSearch({
+    title: meta.title,
+    abstract: meta.abstract || "",
+    keywords: meta.keywords || "",
+    author_org: meta.author_org || payload.author_org || "",
+    extra: meta.extra || payload.extra || "",
+    previous_keywords: payload.keywords || "",
+    retry_note: `上次检索关键词入选不足 ${STAGE1_MIN_SELECTED} 人，请略放宽粒度或更换过细词后重新提炼恰好 3 个关键词`,
+  });
+}
+
+function startDirectRecommend() {
+  hideRefinedKeywords();
+  const fields = validateDirectForm();
+  if (!fields) return;
+  autoRefineCount = 0;
+  paperMetaForRefine = {
+    title: fields.title,
+    abstract: fields.abstract,
+    keywords: fields.keywords,
+    author_org: fields.author_org,
+    extra: fields.extra,
+  };
+  const payload = buildRecommendPayload(fields.keywords, { includePaperMeta: false });
+  pendingPayload = payload;
+  activePaperKeywords = fields.keywords;
+  startRecommend(payload);
+}
+
+function startSmartRecommend() {
+  hideRefinedKeywords();
+  const fields = validateRefineForm();
+  if (!fields) return;
+  autoRefineCount = 0;
+  paperMetaForRefine = {
+    title: fields.title,
+    abstract: fields.abstract,
+    keywords: fields.keywords,
+    author_org: fields.author_org,
+    extra: fields.extra,
+  };
+  refineAndSearch(fields);
 }
 
 function openPubsModal(expert) {
@@ -692,8 +1026,8 @@ function renderPubsChartSvg(series) {
     const value = Math.round((maxY * t) / ticks);
     const y = pad.top + chartH - (value / maxY) * chartH;
     grid.push(`
-      <line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="#e2e8f0" />
-      <text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="11">${value}</text>
+      <line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="#dce3eb" />
+      <text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" fill="#6b7c90" font-size="11">${value}</text>
     `);
   }
 
@@ -720,7 +1054,7 @@ function renderPubsChartSvg(series) {
         .join("");
       return `
         ${rects}
-        <text x="${x + barW / 2}" y="${height - 14}" text-anchor="middle" fill="#64748b" font-size="11">${year}</text>
+        <text x="${x + barW / 2}" y="${height - 14}" text-anchor="middle" fill="#6b7c90" font-size="11">${year}</text>
       `;
     })
     .join("");
@@ -865,40 +1199,18 @@ async function queryAuthorPubs(expert) {
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
-  hideKeywordConfirm();
-  const data = new FormData(form);
-  refineKeywords({
-    title: data.get("title").trim(),
-    abstract: data.get("abstract").trim(),
-    keywords: data.get("keywords").trim(),
-    author_org: data.get("author_org").trim(),
-    extra: data.get("extra").trim(),
-  });
+  if (formMode === "direct") startDirectRecommend();
+  else startSmartRecommend();
 });
 
-confirmKeywordsBtn.addEventListener("click", () => {
-  if (!pendingPayload) return;
-  const keywords = confirmedKeywordsInput.value
-    .split(/[,，]/)
-    .map((word) => word.trim())
-    .filter(Boolean)
-    .join(",");
-  if (!keywords) {
-    confirmedKeywordsInput.focus();
-    return;
-  }
-  const payload = { ...pendingPayload, keywords };
-  activePaperKeywords = keywords;
-  hideKeywordConfirm();
-  startRecommend(payload);
-});
-
-cancelKeywordsBtn.addEventListener("click", () => {
-  hideKeywordConfirm();
-  setConnectionStatus("ok", "服务正常");
-});
+modeDirectBtn.addEventListener("click", () => setFormMode("direct"));
+modeRefineBtn.addEventListener("click", () => setFormMode("refine"));
+directSearchBtn.addEventListener("click", () => startDirectRecommend());
+refineBtn.addEventListener("click", () => startSmartRecommend());
 
 stopBtn.addEventListener("click", () => {
+  pendingAutoRefine = false;
+  abortReason = "user";
   abortController?.abort();
 });
 
@@ -996,4 +1308,14 @@ stage1Body.addEventListener("click", async (e) => {
   }
 });
 
+refinedKeywordsToggle?.addEventListener("click", () => {
+  const collapsed = !refinedKeywordsPanel?.classList.contains("collapsed");
+  setRefinedKeywordsCollapsed(collapsed);
+});
+
 checkHealth();
+setFormMode("direct");
+applyStageFilter("stage1");
+renderStage1Empty("提交论文信息后开始召回…");
+setStageCard("stage1", "idle");
+setStageLabel(stage1State, "等待中");

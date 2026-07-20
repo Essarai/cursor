@@ -16,6 +16,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(WEB_DIR), **kwargs)
 
+    def end_headers(self) -> None:
+        # 开发期禁止缓存，避免旧 JS 导致「开始检索后确认区消失」等行为回退
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Reviewer Agent 前端静态服务")

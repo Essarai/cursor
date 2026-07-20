@@ -5,7 +5,7 @@
     "title": "混沌系统同步控制研究",
     "keywords": "混沌系统,同步控制",
     "author_org": "",
-    "extra": "Ground truth 评测：跳过阶段一，直接进入阶段二/三"
+    "extra": "Ground truth 评测：关键词召回 100 人 → 阶段一/二/三全链路"
   },
   "search_keywords": "混沌系统;;同步控制",
   "accepted_reviewers": [

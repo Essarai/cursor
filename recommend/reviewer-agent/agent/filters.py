@@ -9,9 +9,20 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 from agent.types import ReviewerCandidate
 
 _SPLIT_RE = re.compile(r"[;；,，、\n]+")
+_PART_SPLIT_RE = re.compile(r"[/\s·]+")
 
 STAGE1_MIN_OVERLAP = float(os.getenv("AGENT_STAGE1_MIN_OVERLAP", "0.5"))
 STAGE1_MAX_SELECTED = int(os.getenv("AGENT_STAGE1_MAX_SELECTED", "25"))
+
+# 分层计分
+_EXACT_SCORE = 1.0
+_SUBSTRING_SCORE = 0.7
+_MIN_SUBSTRING_LEN = 2
+_MIN_SUBSTRING_COVERAGE = 0.5  # 较短词长度 / 较长词长度，抑制「同步」命中「自适应同步」
+_MIN_BIGRAM_TOKEN_LEN = 3  # bigram 软匹配要求两侧都足够长
+_BIGRAM_FLOOR = 0.2
+_BIGRAM_SCORE_MIN = 0.3
+_BIGRAM_SCORE_MAX = 0.65
 
 
 def parse_keywords(text: str) -> List[str]:
@@ -45,16 +56,88 @@ def filter_coi(
 
 
 def _expand_tokens(tokens: Iterable[str]) -> set[str]:
+    """保留整词，并按 /、空格、· 拆出长度≥2 的片段。"""
     expanded: set[str] = set()
     for token in tokens:
         token = token.strip().lower()
         if not token:
             continue
         expanded.add(token)
-        for part in re.split(r"[/\s·]+", token):
+        for part in _PART_SPLIT_RE.split(token):
             if len(part) >= 2:
                 expanded.add(part)
     return expanded
+
+
+def _keyword_terms(keywords: Sequence[str]) -> List[str]:
+    """有序去重的关键词列表（含 / 等分隔的片段）。"""
+    terms: List[str] = []
+    seen: set[str] = set()
+    for token in keywords:
+        token = str(token).strip().lower()
+        if not token:
+            continue
+        parts = [token, *_PART_SPLIT_RE.split(token)]
+        for part in parts:
+            part = part.strip()
+            if len(part) < 2 or part in seen:
+                continue
+            seen.add(part)
+            terms.append(part)
+    return terms
+
+
+def _char_bigrams(text: str) -> set[str]:
+    t = text.strip().lower()
+    if not t:
+        return set()
+    if len(t) < 2:
+        return {t}
+    return {t[i : i + 2] for i in range(len(t) - 1)}
+
+
+def _bigram_jaccard(left: str, right: str) -> float:
+    a = _char_bigrams(left)
+    b = _char_bigrams(right)
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    if inter == 0:
+        return 0.0
+    return inter / len(a | b)
+
+
+def _bigram_soft_score(jaccard: float) -> float:
+    if jaccard < _BIGRAM_FLOOR:
+        return 0.0
+    # 将 [floor, 1] 线性映射到 [BIGRAM_SCORE_MIN, BIGRAM_SCORE_MAX]
+    span = 1.0 - _BIGRAM_FLOOR
+    ratio = (jaccard - _BIGRAM_FLOOR) / span if span > 0 else 0.0
+    return _BIGRAM_SCORE_MIN + (_BIGRAM_SCORE_MAX - _BIGRAM_SCORE_MIN) * ratio
+
+
+def token_pair_score(paper_token: str, reviewer_token: str) -> float:
+    """单个论文词 vs 单个审稿人词的分层相似度。"""
+    pt = paper_token.strip().lower()
+    rt = reviewer_token.strip().lower()
+    if not pt or not rt:
+        return 0.0
+    if pt == rt:
+        return _EXACT_SCORE
+
+    shorter, longer = (pt, rt) if len(pt) <= len(rt) else (rt, pt)
+    coverage = len(shorter) / len(longer) if longer else 0.0
+    if (
+        len(shorter) >= _MIN_SUBSTRING_LEN
+        and coverage >= _MIN_SUBSTRING_COVERAGE
+        and shorter in longer
+    ):
+        return _SUBSTRING_SCORE
+
+    # 两侧都够长才做 bigram，避免双字短词靠局部字面重合刷分
+    if len(pt) >= _MIN_BIGRAM_TOKEN_LEN and len(rt) >= _MIN_BIGRAM_TOKEN_LEN:
+        return _bigram_soft_score(_bigram_jaccard(pt, rt))
+    return 0.0
 
 
 def keyword_overlap_score(
@@ -62,24 +145,32 @@ def keyword_overlap_score(
     paper_title: str,
     reviewer_keywords: Sequence[str],
 ) -> float:
-    paper_tokens = _expand_tokens(paper_keywords)
-    title_lower = paper_title.strip().lower()
-    for kw in paper_keywords:
-        if kw and kw in title_lower:
-            paper_tokens.add(kw)
+    """
+    论文关键词 vs 审稿人研究方向的精细重合度。
 
-    reviewer_tokens = _expand_tokens(reviewer_keywords)
-    if not paper_tokens or not reviewer_tokens:
+    对每个论文词取与审稿人词的最大分层分，再平均：
+    - 精确相等 → 1.0
+    - 互为子串，且较短词长度占比 ≥ 0.5 → 0.7
+      （「自适应」可命中「自适应同步」，「同步」不能）
+    - 两侧词长 ≥ 3 且字 bigram Jaccard ≥ 0.2 → 映射到 0.30–0.65
+    """
+    paper_terms = _keyword_terms(paper_keywords)
+    title_lower = paper_title.strip().lower()
+    if title_lower:
+        for kw in paper_keywords:
+            kw = str(kw).strip().lower()
+            if kw and kw in title_lower and kw not in paper_terms:
+                paper_terms.append(kw)
+
+    reviewer_terms = list(_expand_tokens(reviewer_keywords))
+    if not paper_terms or not reviewer_terms:
         return 0.0
 
-    hits = 0
-    for pt in paper_tokens:
-        for rt in reviewer_tokens:
-            if pt == rt or pt in rt or rt in pt:
-                hits += 1
-                break
-
-    return hits / len(paper_tokens)
+    scores: List[float] = []
+    for pt in paper_terms:
+        best = max(token_pair_score(pt, rt) for rt in reviewer_terms)
+        scores.append(best)
+    return sum(scores) / len(scores)
 
 
 def rank_candidates(

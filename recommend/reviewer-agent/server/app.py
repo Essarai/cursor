@@ -49,6 +49,17 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def no_cache_static(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith((".html", ".js", ".css")):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
     return HealthResponse()
@@ -66,6 +77,8 @@ def refine_paper_keywords(body: RefineKeywordsRequest) -> RefineKeywordsResponse
             title=body.title,
             abstract=body.abstract,
             keywords=body.keywords,
+            previous_keywords=body.previous_keywords,
+            retry_note=body.retry_note,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"关键词提炼失败：{exc}") from exc
