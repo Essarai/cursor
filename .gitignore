@@ -1,0 +1,22 @@
+# 本分支仅部署审稿人推荐 Agent；其余 monorepo 内容本地保留、不推送
+.DS_Store
+.vscode/
+1.json
+pom.xml
+
+CLFT/
+Depth-Anything-V2/
+chrome-mcp-server-0.0.6/
+cite/
+git/
+langgraph_study/
+prompt/
+review/
+src/
+target/
+xy/
+
+# recommend 下除 reviewer-agent 外均为无关项目
+recommend/*
+!recommend/reviewer-agent/
+!recommend/reviewer-agent/**
