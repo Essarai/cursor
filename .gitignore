@@ -3,6 +3,16 @@
 .vscode/
 1.json
 pom.xml
+.env
+.env.local
+.env.*.local
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+data/
 
 CLFT/
 Depth-Anything-V2/
@@ -10,13 +20,8 @@ chrome-mcp-server-0.0.6/
 cite/
 git/
 langgraph_study/
-prompt/
 review/
 src/
 target/
 xy/
-
-# recommend 下除 reviewer-agent 外均为无关项目
-recommend/*
-!recommend/reviewer-agent/
-!recommend/reviewer-agent/**
+recommend/

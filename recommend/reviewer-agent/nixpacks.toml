@@ -1,5 +1,0 @@
-[variables]
-NIXPACKS_PYTHON_VERSION = "3.12"
-
-[start]
-cmd = "uvicorn server.app:app --host 0.0.0.0 --port $PORT"
