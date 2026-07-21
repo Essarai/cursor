@@ -29,6 +29,10 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "web"
 load_dotenv(ROOT / ".env")
 
+# Railway 等平台会注入 PORT；本地默认 8000
+PORT = int(os.getenv("PORT") or os.getenv("API_PORT", "8000"))
+HOST = os.getenv("API_HOST", "0.0.0.0")
+
 app = FastAPI(
     title="CSCD 审稿人推荐 Agent",
     description="三阶段审稿人推荐：Python 硬过滤 + 数据补全 + LLM 语义精筛",
@@ -144,3 +148,19 @@ if WEB_DIR.is_dir():
         StaticFiles(directory=WEB_DIR, html=True),
         name="web",
     )
+
+
+def main() -> None:
+    import uvicorn
+
+    uvicorn.run(
+        "server.app:app",
+        host=HOST,
+        port=PORT,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+    )
+
+
+if __name__ == "__main__":
+    main()

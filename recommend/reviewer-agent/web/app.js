@@ -1,6 +1,6 @@
-// 前端独立运行时（5173）请求后端 API（8000）；与后端同域时留空
+// 本地前端独立端口（5173）才打到本机后端；Railway / 同域部署用相对路径
 const API_BASE =
-  window.location.port && window.location.port !== "8000"
+  window.location.port === "5173"
     ? "http://127.0.0.1:8000"
     : "";
 const ENDPOINTS = {
@@ -62,7 +62,7 @@ const resultState = document.getElementById("resultState");
 
 let abortController = null;
 let pendingPayload = null;
-let activeFilter = "stage1";
+let activeFilter = "all";
 let lastReviewers = [];
 let lastStage1Experts = [];
 let activePaperKeywords = "";
@@ -631,34 +631,32 @@ function resetUI() {
   lastReviewers = [];
   lastStage1Experts = [];
   stage2Progress.length = 0;
-  setStageCard("stage2", "idle");
-  setStageCard("stage3", "idle");
-  setStageCard("result", "idle");
+  ["stage1", "stage2", "stage3", "result"].forEach((stage) => {
+    setStageCard(stage, stage === "stage1" ? "active" : "idle");
+  });
+  setStageLabel(stage1State, "进行中");
   setStageLabel(stage2State, "等待中");
   setStageLabel(stage3State, "等待中");
   setStageLabel(resultState, "等待中");
-  // 阶段二/三始终不对用户展示
-  document.querySelector('.stage-card[data-stage="stage2"]')?.classList.add("hidden");
-  document.querySelector('.stage-card[data-stage="stage3"]')?.classList.add("hidden");
 
   renderStage1Empty("正在召回候选人…");
-  resultBody.innerHTML = `<p class="placeholder">推荐完成后展示…</p>`;
-  applyStageFilter("stage1");
+  stage2Body.innerHTML = `<p class="placeholder">等待候选专家完成…</p>`;
+  stage3Body.innerHTML = `<p class="placeholder">等待背景补全完成…</p>`;
+  resultBody.innerHTML = `<p class="placeholder">精荐完成后展示…</p>`;
+  applyStageFilter("all");
 }
 
 function applyStageFilter(filter) {
-  const next = filter === "result" ? "result" : "stage1";
+  const allowed = new Set(["all", "stage1", "stage2", "stage3", "result"]);
+  const next = allowed.has(filter) ? filter : "all";
   activeFilter = next;
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.stage === next);
   });
   document.querySelectorAll(".stage-card").forEach((card) => {
     const stage = card.dataset.stage;
-    if (stage === "stage2" || stage === "stage3") {
-      card.classList.add("hidden");
-      return;
-    }
-    card.classList.toggle("hidden", stage !== next);
+    const visible = next === "all" || stage === next;
+    card.classList.toggle("hidden", !visible);
   });
 }
 
@@ -697,28 +695,50 @@ function handleEvent(event) {
       }
 
       renderStage1(thinking);
-      setConnectionStatus("running", "候选匹配完成，正在生成 AI 推荐结果…");
-      setStageCard("result", "active");
-      setStageLabel(resultState, "进行中");
-      resultBody.innerHTML = `<p class="placeholder">正在生成 AI 推荐结果…</p>`;
+      setConnectionStatus("running", "候选匹配完成，正在补全学者背景…");
+      setStageCard("stage2", "active");
+      setStageLabel(stage2State, "进行中");
+      stage2Body.innerHTML = `<p class="placeholder">正在补全学者背景…</p>`;
       break;
     }
 
     case "stage2_thinking": {
-      // 阶段二在后台运行，不对用户展示
       const thinking = event.thinking || {};
       if (thinking.progress) {
         renderStage2Progress(thinking);
+        setStageCard("stage2", "active");
+        setStageLabel(stage2State, "进行中");
         setConnectionStatus("running", "正在补全学者背景…");
+        stage2Body.innerHTML = `
+          <div class="progress-list">
+            ${stage2Progress
+              .map(
+                (item) => `
+                  <div class="progress-item">
+                    <span><strong>${escapeHtml(item.name)}</strong> · ${escapeHtml(item.org)}</span>
+                    <span>${escapeHtml(item.progress)} · score ${item.activity_score}</span>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        `;
       } else if (thinking.summary) {
+        renderStage2Summary(thinking);
         setConnectionStatus("running", "正在语义精筛…");
+        setStageCard("stage3", "active");
+        setStageLabel(stage3State, "进行中");
+        stage3Body.innerHTML = `<div id="stage3Stream" class="thinking-stream"></div>`;
       }
       break;
     }
 
     case "stage3_thinking":
-      // 阶段三在后台运行，不对用户展示
-      if (event.thinking?.summary || event.chunk) {
+      if (event.thinking?.summary) {
+        renderStage3Summary(event.thinking);
+        setConnectionStatus("running", "正在语义精筛…");
+      } else if (event.chunk) {
+        appendStage3Text(event.chunk);
         setConnectionStatus("running", "正在语义精筛…");
       }
       break;
@@ -726,7 +746,6 @@ function handleEvent(event) {
     case "stage3_done":
       renderResult(event.reviewers || []);
       setConnectionStatus("ok", "推荐完成");
-      applyStageFilter("result");
       break;
 
     case "error":
@@ -1366,7 +1385,10 @@ refinedKeywordsToggle?.addEventListener("click", () => {
 
 checkHealth();
 setFormMode("direct");
-applyStageFilter("stage1");
+applyStageFilter("all");
 renderStage1Empty("提交论文信息后开始召回…");
 setStageCard("stage1", "idle");
 setStageLabel(stage1State, "等待中");
+stage2Body.innerHTML = `<p class="placeholder">等待候选专家完成…</p>`;
+stage3Body.innerHTML = `<p class="placeholder">等待背景补全完成…</p>`;
+resultBody.innerHTML = `<p class="placeholder">精荐完成后展示…</p>`;

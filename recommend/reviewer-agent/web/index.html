@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSCD 审稿人推荐</title>
-  <link rel="stylesheet" href="/styles.css?v=20260720u" />
+  <link rel="stylesheet" href="/styles.css?v=20260721r" />
 </head>
 <body>
   <div class="layout">
@@ -106,7 +106,10 @@
         <div class="output-header">
           <h2>推荐过程</h2>
           <div class="stage-tabs" id="stageTabs">
-            <button type="button" class="tab active" data-stage="stage1">候选专家</button>
+            <button type="button" class="tab active" data-stage="all">全部</button>
+            <button type="button" class="tab" data-stage="stage1">候选专家</button>
+            <button type="button" class="tab" data-stage="stage2">背景补全</button>
+            <button type="button" class="tab" data-stage="stage3">语义精筛</button>
             <button type="button" class="tab" data-stage="result">AI推荐结果</button>
           </div>
         </div>
@@ -126,7 +129,7 @@
             </div>
           </article>
 
-          <article class="stage-card idle hidden" data-stage="stage2" aria-hidden="true">
+          <article class="stage-card idle" data-stage="stage2">
             <div class="stage-head">
               <span class="stage-badge">2</span>
               <div>
@@ -136,11 +139,11 @@
               <span class="stage-state" id="stage2State">等待中</span>
             </div>
             <div class="stage-body" id="stage2Body">
-              <p class="placeholder">后台进行中…</p>
+              <p class="placeholder">等待候选专家完成…</p>
             </div>
           </article>
 
-          <article class="stage-card idle hidden" data-stage="stage3" aria-hidden="true">
+          <article class="stage-card idle" data-stage="stage3">
             <div class="stage-head">
               <span class="stage-badge">3</span>
               <div>
@@ -150,7 +153,7 @@
               <span class="stage-state" id="stage3State">等待中</span>
             </div>
             <div class="stage-body" id="stage3Body">
-              <p class="placeholder">后台进行中…</p>
+              <p class="placeholder">等待背景补全完成…</p>
             </div>
           </article>
 
@@ -187,6 +190,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260720u"></script>
+  <script src="/app.js?v=20260721r"></script>
 </body>
 </html>
