@@ -120,6 +120,7 @@ def enrich_candidate(
         recent_papers=recent_papers,
         overlap_score=candidate.overlap_score,
         subject=candidate.subject,
+        position=candidate.position,
     )
 
 
@@ -135,6 +136,7 @@ def enriched_to_llm_dict(candidate: EnrichedCandidate) -> Dict[str, Any]:
         "overlap_score": candidate.overlap_score,
         "fusion_score": candidate.fusion_score,
         "subject": candidate.subject,
+        "position": candidate.position,
         "research_keywords": candidate.research_keywords,
         "recent_papers": [
             {
@@ -184,6 +186,7 @@ def rerank_enriched_candidates(
                     recent_papers=candidate.recent_papers,
                     overlap_score=candidate.overlap_score,
                     subject=candidate.subject,
+                    position=candidate.position,
                     fusion_score=fusion,
                 ),
             )

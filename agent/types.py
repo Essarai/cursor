@@ -23,6 +23,8 @@ class ReviewerCandidate:
     hindex: float
     research_keywords: List[str] = field(default_factory=list)
     subject: str = ""
+    position: str = ""
+    resume: str = ""
     overlap_score: float = 0.0
 
 
@@ -47,6 +49,7 @@ class EnrichedCandidate:
     recent_papers: List[RecentPaper]
     overlap_score: float = 0.0
     subject: str = ""
+    position: str = ""
     fusion_score: float = 0.0
 
 
@@ -59,6 +62,8 @@ def reviewer_to_dict(candidate: ReviewerCandidate) -> Dict[str, Any]:
         "hindex": candidate.hindex,
         "research_keywords": candidate.research_keywords,
         "subject": candidate.subject,
+        "position": candidate.position,
+        "resume": candidate.resume,
         "overlap_score": candidate.overlap_score,
     }
 
@@ -72,8 +77,17 @@ def reviewer_from_dict(data: Dict[str, Any]) -> ReviewerCandidate:
         hindex=float(data.get("hindex") or 0.0),
         research_keywords=list(data.get("research_keywords") or []),
         subject=str(data.get("subject") or "").strip(),
+        position=str(data.get("position") or "").strip(),
+        resume=str(data.get("resume") or "").strip(),
         overlap_score=float(data.get("overlap_score") or 0.0),
     )
+
+
+def _normalize_resume(raw: Any) -> str:
+    text = str(raw or "").replace(";;", "\n").replace("\r\n", "\n")
+    lines = [line.strip() for line in text.split("\n")]
+    cleaned = "\n".join(line for line in lines if line and line.lower() != "null")
+    return cleaned.strip()
 
 
 def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
@@ -97,4 +111,6 @@ def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
         hindex=hindex,
         research_keywords=keywords,
         subject=str(raw.get("subject") or "").strip(),
+        position=str(raw.get("position") or "").strip(),
+        resume=_normalize_resume(raw.get("resume")),
     )

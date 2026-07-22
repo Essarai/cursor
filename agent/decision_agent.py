@@ -23,7 +23,6 @@ from agent.emit import emit
 from agent.golden_cases import load_golden_cases
 from agent.scoring import pub_year_range_last_n
 from agent.tools import fetch_author_info_with_memory
-from cscd.client import init_api_code
 
 ROOT = Path(__file__).resolve().parents[1]
 AGENT_PROMPT_PATH = ROOT / "prompt" / "agent.md"
@@ -106,7 +105,7 @@ def run_decision_agent(
     api_code: Optional[str] = None,
 ) -> None:
     """Agent 决策：工具循环 → submit_reviewers → stage3_done。"""
-    session_code = (api_code or "").strip() or init_api_code()
+    session_code = (api_code or "").strip() or None
     candidates: List[Dict[str, Any]] = list(llm_payload.get("candidates") or [])
     pub_year = pub_year_range_last_n(int(os.getenv("AGENT_RECENT_PAPER_YEARS", "3")))
     max_steps = int(os.getenv("AGENT_STAGE3_MAX_STEPS", "4"))

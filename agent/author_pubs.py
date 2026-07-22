@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent.tools import fetch_author_info_with_memory
-from cscd.client import init_api_code
 
 ROLE_NOTE = (
     "一作按 authorSequence=1；通讯暂按末位作者近似"
@@ -156,7 +155,6 @@ def _fetch_all_articles(
     *,
     author_id: str = "",
 ) -> Tuple[List[Dict[str, Any]], int, bool]:
-    init_api_code()
     articles: List[Dict[str, Any]] = []
     total = 0
     identity_verified = False

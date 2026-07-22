@@ -46,6 +46,7 @@
                 name="title"
                 placeholder="例如：四维Lorenz-like 系统的稳定性、分岔与混沌"
                 value="四维Lorenz-like 系统的稳定性、分岔与混沌"
+                autocomplete="off"
               />
             </label>
 
@@ -63,10 +64,11 @@
               <input
                 type="text"
                 name="keywords"
-                placeholder="逗号分隔，例如：混沌系统,同步控制"
-                value="混沌系统,同步控制"
+                placeholder="逗号/顿号/分号均可，例如：混沌系统、同步控制"
+                value="混沌系统、同步控制"
+                autocomplete="off"
               />
-              <small class="field-tip" id="keywordsTip">直接用于 CSCD 学者检索</small>
+              <small class="field-tip" id="keywordsTip">支持逗号、顿号、分号等分隔，直接用于 CSCD 学者检索</small>
             </label>
 
             <label>
@@ -76,12 +78,14 @@
                 name="author_org"
                 placeholder="选填，填写后触发 COI 机构熔断"
                 value="浙江大学"
+                autocomplete="organization"
               />
             </label>
 
             <div class="form-actions">
               <button type="button" id="directSearchBtn" class="primary-btn">开始检索</button>
               <button type="button" id="refineBtn" class="primary-btn hidden">开始智能检索</button>
+              <button type="button" id="newPaperBtn" class="secondary" title="清空论文信息，保留机构">新一篇</button>
               <button type="button" id="stopBtn" class="secondary" disabled>停止</button>
             </div>
           </form>

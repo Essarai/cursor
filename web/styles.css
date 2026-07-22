@@ -1073,12 +1073,12 @@ button:disabled {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .author-identity {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   min-width: 0;
 }
@@ -1097,12 +1097,71 @@ button:disabled {
 }
 
 .author-name {
+  flex-shrink: 0;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 8em;
+}
+
+.author-position {
+  flex-shrink: 0;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.author-org {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.author-resume {
+  margin: 0;
+  padding-left: 28px;
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5f6368;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  cursor: default;
+  transition: color 0.15s ease;
+}
+
+.author-row:hover .author-resume {
+  -webkit-line-clamp: unset;
+  display: block;
+  color: #3c4043;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.author-research {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 28px;
 }
 
 .author-meta {
@@ -1113,7 +1172,7 @@ button:disabled {
   font-size: 12px;
   color: var(--muted);
   line-height: 1.45;
-  padding-left: 28px;
+  padding-left: 0;
 }
 
 .author-meta .sep {
@@ -1121,17 +1180,9 @@ button:disabled {
   color: #b0bac4;
 }
 
-.author-org {
-  flex-shrink: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: min(280px, 100%);
-}
-
 .author-keywords {
-  padding-left: 28px;
-  margin-top: 2px;
+  padding-left: 0;
+  margin-top: 0;
 }
 
 .subject-tags {
@@ -1399,6 +1450,13 @@ button:disabled {
   margin: 0 0 3px;
   font-family: var(--display);
   font-size: 17px;
+}
+
+.reviewer-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .reviewer-org {

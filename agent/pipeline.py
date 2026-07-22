@@ -17,19 +17,49 @@ from agent.scoring import (
     rerank_enriched_candidates,
 )
 from agent.types import EnrichedCandidate, PaperInput, ReviewerCandidate, parse_reviewer
-from cscd.client import init_api_code
 
 RECENT_PAPER_YEARS = int(os.getenv("AGENT_RECENT_PAPER_YEARS", "3"))
 
 
 def fetch_reviewers(keywords: str, api_code: Optional[str] = None) -> List[ReviewerCandidate]:
-    response = fetch_reviewers_with_memory(keywords, api_code)
-    if not response.get("success"):
-        message = response.get("message") or "getPeerReviewers 调用失败"
-        raise RuntimeError(message)
+    """按关键词分别召回后合并去重。
 
-    raw_list = response.get("result") or []
-    return [parse_reviewer(item) for item in raw_list if item.get("authorName")]
+    CSCD 把多词拼成 ``a;;b;;c`` 一次查询时，专有词（如「猪圆环病毒2型」）的
+    强匹配专家常被挤出 Top100；分词召回再并集可保留各词的专业候选人。
+    """
+    terms = parse_keywords(keywords)
+    if not terms and keywords.strip():
+        terms = [keywords.strip()]
+    if not terms:
+        return []
+
+    merged: Dict[str, ReviewerCandidate] = {}
+    order: List[str] = []
+    errors: List[str] = []
+
+    for term in terms:
+        response = fetch_reviewers_with_memory(term, api_code)
+        if not response.get("success"):
+            message = response.get("message") or "getPeerReviewers 调用失败"
+            errors.append(f"{term}: {message}")
+            continue
+
+        for item in response.get("result") or []:
+            if not item.get("authorName"):
+                continue
+            candidate = parse_reviewer(item)
+            key = candidate.id.strip() or f"{candidate.name}|{candidate.org}"
+            if key in merged:
+                continue
+            merged[key] = candidate
+            order.append(key)
+
+    if not merged:
+        if errors:
+            raise RuntimeError("；".join(errors))
+        return []
+
+    return [merged[key] for key in order]
 
 
 def _expert_dict(candidate: ReviewerCandidate, rank: int, *, selected: bool) -> Dict[str, Any]:
@@ -42,6 +72,8 @@ def _expert_dict(candidate: ReviewerCandidate, rank: int, *, selected: bool) -> 
         "email": candidate.email,
         "hindex": candidate.hindex,
         "subject": candidate.subject,
+        "position": candidate.position,
+        "resume": candidate.resume,
         "overlap_score": candidate.overlap_score,
         "research_keywords": keywords,
         "selected": selected,
@@ -247,7 +279,8 @@ def build_llm_payload(
 
 
 def run_pipeline(paper: PaperInput, api_code: Optional[str] = None) -> Dict[str, Any]:
-    session_code = (api_code or "").strip() or init_api_code()
+    # 入口不强制 getApiCode：工具层缓存命中时可零鉴权完成召回
+    session_code = (api_code or "").strip() or None
     stage1 = run_stage1(paper, session_code)
     enriched = run_stage2(stage1["selected"], session_code)
     payload = build_llm_payload(paper, enriched, stage1)

@@ -13,6 +13,9 @@ _PART_SPLIT_RE = re.compile(r"[/\s·]+")
 
 STAGE1_MIN_OVERLAP = float(os.getenv("AGENT_STAGE1_MIN_OVERLAP", "0.5"))
 STAGE1_MAX_SELECTED = int(os.getenv("AGENT_STAGE1_MAX_SELECTED", "25"))
+# 多词聚合：最佳命中权重 + 均值权重（需和为 1）
+_OVERLAP_MAX_WEIGHT = float(os.getenv("AGENT_OVERLAP_MAX_WEIGHT", "0.6"))
+_OVERLAP_MEAN_WEIGHT = 1.0 - _OVERLAP_MAX_WEIGHT
 
 # 分层计分
 _EXACT_SCORE = 1.0
@@ -140,6 +143,23 @@ def token_pair_score(paper_token: str, reviewer_token: str) -> float:
     return 0.0
 
 
+def aggregate_term_scores(scores: Sequence[float]) -> float:
+    """将各论文词的最佳命中分聚合成总重合度。
+
+    ``0.6 * max + 0.4 * mean``：
+    - 只精确命中 1/2 词 → 0.80（不再 soft-OR 拉满 1.0）
+    - 一词精确 + 一词子串 → ~0.94
+    - 两词都精确 → 1.0
+    - 三词只命中专有词 → ~0.73（仍高于入选阈值，不被均值拖死）
+    """
+    if not scores:
+        return 0.0
+    clamped = [max(0.0, min(1.0, float(score))) for score in scores]
+    max_s = max(clamped)
+    mean_s = sum(clamped) / len(clamped)
+    return _OVERLAP_MAX_WEIGHT * max_s + _OVERLAP_MEAN_WEIGHT * mean_s
+
+
 def keyword_overlap_score(
     paper_keywords: Sequence[str],
     paper_title: str,
@@ -148,11 +168,12 @@ def keyword_overlap_score(
     """
     论文关键词 vs 审稿人研究方向的精细重合度。
 
-    对每个论文词取与审稿人词的最大分层分，再平均：
+    对每个论文词取与审稿人词的最大分层分，再按「最佳命中 + 整体覆盖」聚合：
     - 精确相等 → 1.0
     - 互为子串，且较短词长度占比 ≥ 0.5 → 0.7
       （「自适应」可命中「自适应同步」，「同步」不能）
     - 两侧词长 ≥ 3 且字 bigram Jaccard ≥ 0.2 → 映射到 0.30–0.65
+    - 聚合：``0.6 * max(s_i) + 0.4 * mean(s_i)``，避免单点 1.0 或均值过低
     """
     paper_terms = _keyword_terms(paper_keywords)
     title_lower = paper_title.strip().lower()
@@ -170,7 +191,7 @@ def keyword_overlap_score(
     for pt in paper_terms:
         best = max(token_pair_score(pt, rt) for rt in reviewer_terms)
         scores.append(best)
-    return sum(scores) / len(scores)
+    return aggregate_term_scores(scores)
 
 
 def rank_candidates(

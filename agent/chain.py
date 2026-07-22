@@ -342,6 +342,7 @@ def _merge_reviewer_profile(
             "org": str(profile.get("org") or "").strip(),
             "hindex": profile.get("hindex", 0),
             "subject": str(profile.get("subject") or "").strip(),
+            "position": str(profile.get("position") or "").strip(),
             "research_keywords": profile.get("research_keywords") or [],
             "pubs_last_2_years": profile.get("pubs_last_2_years", 0),
             "recent_papers": [
