@@ -372,6 +372,12 @@ function renderStage1Row(item) {
             title="${hasEmail ? escapeHtml(item.email) : "无邮箱"}"
             ${hasEmail ? "" : "disabled"}
           >复制邮箱</button>
+          <button
+            type="button"
+            class="table-action-btn stage1-copy-all-btn"
+            data-rank="${item.rank}"
+            title="复制姓名、称呼、邮箱、单位、研究方向"
+          >复制全部信息</button>
         </div>
       </div>
     </li>
@@ -587,10 +593,16 @@ function renderResult(reviewers) {
                   >查看发文</button>
                   <button
                     type="button"
-                    class="copy-btn"
+                    class="copy-btn result-copy-email-btn"
                     data-index="${index}"
                     ${item.email?.trim() ? "" : "disabled"}
                   >复制邮箱</button>
+                  <button
+                    type="button"
+                    class="copy-all-btn result-copy-all-btn"
+                    data-index="${index}"
+                    title="复制姓名、称呼、邮箱、单位、研究方向"
+                  >复制全部信息</button>
                 </div>
               </div>
               <dl class="reviewer-meta-grid">
@@ -629,7 +641,7 @@ function renderResult(reviewers) {
   `;
 }
 
-async function copyText(text, button) {
+async function copyText(text, button, { successLabel = "已复制", toastMessage = "" } = {}) {
   const value = text?.trim();
   if (!value) return false;
 
@@ -648,14 +660,52 @@ async function copyText(text, button) {
 
   if (button) {
     const original = button.textContent;
-    button.textContent = "已复制";
+    button.textContent = successLabel;
     button.classList.add("copied");
     window.setTimeout(() => {
       button.textContent = original;
       button.classList.remove("copied");
     }, 2000);
   }
+  if (toastMessage) showCopyToast(toastMessage);
   return true;
+}
+
+function showCopyToast(message) {
+  let toast = document.getElementById("copyToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "copyToast";
+    toast.className = "copy-toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("visible");
+  window.clearTimeout(showCopyToast._timer);
+  showCopyToast._timer = window.setTimeout(() => {
+    toast.classList.remove("visible");
+  }, 2200);
+}
+
+function formatExpertCopyText(expert) {
+  const name = String(expert?.name || "").trim() || "-";
+  const title = String(expert?.position || "").trim() || "-";
+  const email = String(expert?.email || "").trim() || "-";
+  const org = String(expert?.org || "").trim() || "-";
+  const keywords = (expert?.research_keywords || []).filter(Boolean);
+  const field =
+    keywords.length > 0
+      ? keywords.join("、")
+      : formatSubjectText(expert?.subject) !== "-"
+        ? formatSubjectText(expert?.subject)
+        : renderResearchField(expert);
+  return [
+    `姓名：${name}`,
+    `称呼：${title}`,
+    `邮箱：${email}`,
+    `单位：${org}`,
+    `研究方向：${field}`,
+  ].join("\n");
 }
 
 function renderError(message) {
@@ -1431,7 +1481,19 @@ resultBody.addEventListener("click", async (e) => {
     return;
   }
 
-  const copyBtn = e.target.closest(".copy-btn");
+  const copyAllBtn = e.target.closest(".result-copy-all-btn");
+  if (copyAllBtn) {
+    const index = Number(copyAllBtn.dataset.index);
+    const reviewer = lastReviewers[index];
+    if (!reviewer) return;
+    await copyText(formatExpertCopyText(reviewer), copyAllBtn, {
+      successLabel: "已复制全部",
+      toastMessage: "全部信息已经复制到粘贴板",
+    });
+    return;
+  }
+
+  const copyBtn = e.target.closest(".result-copy-email-btn");
   if (copyBtn) {
     const index = Number(copyBtn.dataset.index);
     const email = lastReviewers[index]?.email;
@@ -1474,6 +1536,18 @@ stage1Body.addEventListener("click", async (e) => {
     const rank = Number(copyBtn.dataset.rank);
     const expert = lastStage1Experts.find((item) => item.rank === rank);
     await copyText(expert?.email, copyBtn);
+    return;
+  }
+
+  const copyAllBtn = e.target.closest(".stage1-copy-all-btn");
+  if (copyAllBtn) {
+    const rank = Number(copyAllBtn.dataset.rank);
+    const expert = lastStage1Experts.find((item) => item.rank === rank);
+    if (!expert) return;
+    await copyText(formatExpertCopyText(expert), copyAllBtn, {
+      successLabel: "已复制全部",
+      toastMessage: "全部信息已经复制到粘贴板",
+    });
   }
 });
 
