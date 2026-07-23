@@ -22,7 +22,10 @@ API_CODE_TTL = 9 * 60  # ApiCode 约 10 分钟有效，提前 1 分钟刷新
 # 会话级全局 ApiCode，阶段一/二共用
 _session_api_code: str | None = None
 _session_api_code_expires_at: float = 0.0
+_session_api_code_source: str | None = None  # "env" | "credentials"
 _api_code_lock = threading.Lock()
+# 静态 CSCD_API_CODE 已判定过期（AppCode 错误 / 强制刷新）后，改走账号密码
+_prefer_credentials: bool = False
 # getApiCode「申请失败」后冷却，避免冷启动/并发反复打爆限流
 _api_code_fail_until: float = 0.0
 API_CODE_FAIL_COOLDOWN = float(os.getenv("CSCD_API_CODE_FAIL_COOLDOWN", "45"))
@@ -63,11 +66,14 @@ _search_articles_limiter = _SlidingWindowRateLimiter(
 
 
 def invalidate_api_code() -> None:
-    """清空全局 ApiCode，下次调用 init_api_code 会重新获取。"""
+    """清空全局 ApiCode；标记静态码已过期，下次优先用账号密码刷新。"""
     global _session_api_code, _session_api_code_expires_at
+    global _prefer_credentials, _session_api_code_source
     with _api_code_lock:
         _session_api_code = None
         _session_api_code_expires_at = 0.0
+        _session_api_code_source = None
+        _prefer_credentials = True
 
 
 def _is_app_code_error(message: Optional[str]) -> bool:
@@ -104,6 +110,10 @@ def _has_cscd_credentials() -> bool:
     )
 
 
+def _static_api_code_from_env() -> str:
+    return os.getenv("CSCD_API_CODE", "").strip()
+
+
 def _fetch_api_code_from_credentials() -> str:
     user = os.getenv("CSCD_USER", "").strip()
     password = os.getenv("CSCD_PASSWORD", "").strip()
@@ -114,21 +124,14 @@ def _fetch_api_code_from_credentials() -> str:
     return fetch_api_code(user, password)
 
 
-def _fetch_api_code_from_env() -> str:
-    direct = os.getenv("CSCD_API_CODE", "").strip()
-    if direct:
-        return direct
-    raise ValueError("请配置 CSCD_API_CODE 或 CSCD_USER / CSCD_PASSWORD")
-
-
 def init_api_code(force_refresh: bool = False) -> str:
     """初始化全局 ApiCode。
 
-    有 CSCD_USER/PASSWORD 时只走 getApiCode，禁止回退 CSCD_API_CODE
-    （静态码约 10 分钟失效，回退极易导致 AppCode错误）。
-    仅未配置账号密码时，才使用 CSCD_API_CODE。
+    优先读环境变量 CSCD_API_CODE；未配置或已过期（force_refresh /
+    AppCode 错误后）再用 CSCD_USER/PASSWORD 调 getApiCode。
     """
-    global _session_api_code, _session_api_code_expires_at, _api_code_fail_until
+    global _session_api_code, _session_api_code_expires_at, _session_api_code_source
+    global _api_code_fail_until, _prefer_credentials
 
     with _api_code_lock:
         now = time.time()
@@ -139,41 +142,69 @@ def init_api_code(force_refresh: bool = False) -> str:
         ):
             return _session_api_code
 
-        if (
-            not force_refresh
-            and _has_cscd_credentials()
-            and now < _api_code_fail_until
-        ):
-            wait = int(_api_code_fail_until - now)
-            raise ValueError(
-                f"CSCD ApiCode 获取失败：申请失败（冷却中，约 {wait}s 后再试）。"
-                "常见原因：出口 IP 未进白名单，或 getApiCode 被限流。"
-                "请打开 /api/v1/cscd/status 核对 egress_ip 与申请结果。"
-            )
+        static = _static_api_code_from_env()
+        # 内存 TTL 到期且上次是静态码 → 视为过期，改走密码
+        ttl_expired_static = (
+            bool(_session_api_code)
+            and now >= _session_api_code_expires_at
+            and _session_api_code_source == "env"
+        )
+        # 有静态码且尚未判定过期 → 直接用，避免无谓打 getApiCode
+        use_static = (
+            bool(static)
+            and not force_refresh
+            and not _prefer_credentials
+            and not ttl_expired_static
+        )
+        clear_fail_cooldown = True
+        source = "env"
 
-        if _has_cscd_credentials():
+        if use_static:
+            code = static
+            source = "env"
+        elif _has_cscd_credentials():
+            if now < _api_code_fail_until and not force_refresh:
+                wait = int(_api_code_fail_until - now)
+                raise ValueError(
+                    f"CSCD ApiCode 获取失败：申请失败（冷却中，约 {wait}s 后再试）。"
+                    "常见原因：出口 IP 未进白名单，或 getApiCode 被限流。"
+                    "请打开 /api/v1/cscd/status 核对 egress_ip 与申请结果。"
+                )
             try:
                 code = _fetch_api_code_from_credentials()
+                source = "credentials"
             except ValueError as exc:
                 _api_code_fail_until = time.time() + API_CODE_FAIL_COOLDOWN
-                raise ValueError(
-                    f"CSCD ApiCode 获取失败：{exc}。"
-                    "已配置 CSCD_USER/CSCD_PASSWORD，不会回退 CSCD_API_CODE；"
-                    "请确认账号密码正确、出口 IP 已加白名单，或稍后再试（接口可能限流）。"
-                    "可访问 /api/v1/cscd/status 查看 egress_ip。"
-                ) from exc
+                clear_fail_cooldown = False
+                # 密码申请失败时，若仍有静态码可作最后兜底（可能也已过期）
+                if static:
+                    code = static
+                    source = "env"
+                else:
+                    raise ValueError(
+                        f"CSCD ApiCode 获取失败：{exc}。"
+                        "请确认 CSCD_USER/CSCD_PASSWORD、出口 IP 白名单，"
+                        "或更新 CSCD_API_CODE。"
+                        "可访问 /api/v1/cscd/status 查看 egress_ip。"
+                    ) from exc
+        elif static:
+            # 无账号密码，只能继续用环境变量
+            code = static
+            source = "env"
         else:
-            try:
-                code = _fetch_api_code_from_env()
-            except ValueError as exc:
-                raise ValueError(
-                    f"CSCD ApiCode 获取失败：{exc}。"
-                    "请配置 CSCD_USER/CSCD_PASSWORD（推荐），或更新 CSCD_API_CODE。"
-                ) from exc
+            raise ValueError(
+                "CSCD ApiCode 获取失败：请配置 CSCD_API_CODE，"
+                "或 CSCD_USER / CSCD_PASSWORD。"
+            )
 
         _session_api_code = code
         _session_api_code_expires_at = now + API_CODE_TTL
-        _api_code_fail_until = 0.0
+        _session_api_code_source = source
+        if clear_fail_cooldown:
+            _api_code_fail_until = 0.0
+        # 成功用密码刷到新码后，允许后续再优先读（可能已更新的）静态码
+        if source == "credentials":
+            _prefer_credentials = False
         return _session_api_code
 
 
@@ -196,43 +227,52 @@ def probe_egress_ip(timeout: float = 8.0) -> str | None:
 
 
 def diagnose_cscd() -> Dict[str, Any]:
-    """线上排查：凭证是否配置、出口 IP、getApiCode 能否成功（不返回码本身）。"""
+    """线上排查：凭证是否配置、出口 IP、当前鉴权策略（不返回码本身）。"""
     has_user = bool(os.getenv("CSCD_USER", "").strip())
     has_password = bool(os.getenv("CSCD_PASSWORD", "").strip())
-    has_static = bool(os.getenv("CSCD_API_CODE", "").strip())
+    has_static = bool(_static_api_code_from_env())
     egress_ip = probe_egress_ip()
 
     get_api_code_ok = False
     get_api_code_message = ""
     used_cached = False
+    source = ""
     if _session_api_code and time.time() < _session_api_code_expires_at:
         get_api_code_ok = True
         get_api_code_message = "使用内存缓存中的有效 ApiCode"
         used_cached = True
-    elif has_user and has_password:
+        source = "cache"
+    else:
         try:
-            init_api_code(force_refresh=True)
+            # 与线上一致：优先静态码，过期/强制时再走密码
+            init_api_code(force_refresh=_prefer_credentials)
             get_api_code_ok = True
-            get_api_code_message = "操作成功"
+            if has_static and not _prefer_credentials:
+                source = "env"
+                get_api_code_message = "使用环境变量 CSCD_API_CODE"
+            elif has_user and has_password:
+                source = "credentials"
+                get_api_code_message = "通过 CSCD_USER/PASSWORD 申请成功"
+            else:
+                source = "env"
+                get_api_code_message = "使用环境变量 CSCD_API_CODE"
         except ValueError as exc:
             get_api_code_message = str(exc)
-    else:
-        get_api_code_message = "未配置 CSCD_USER/CSCD_PASSWORD"
 
     return {
         "base_url": BASE_URL,
         "has_cscd_user": has_user,
         "has_cscd_password": has_password,
         "has_static_api_code": has_static,
-        "static_api_code_ignored": has_user and has_password and has_static,
+        "prefer_credentials": _prefer_credentials,
+        "api_code_source": source,
         "egress_ip": egress_ip,
         "get_api_code_ok": get_api_code_ok,
         "get_api_code_message": get_api_code_message,
         "used_cached_api_code": used_cached,
         "hint": (
-            "若 get_api_code_ok=false 且 message 含「申请失败」，"
-            "请把 egress_ip 加入 CSCD 白名单，并确认 Railway 使用固定出口 IP；"
-            "有账号密码时请勿依赖 CSCD_API_CODE。"
+            "优先 CSCD_API_CODE；缺失或 AppCode 过期后再用账号密码 getApiCode。"
+            "若申请失败，请把 egress_ip 加入 CSCD 白名单（Railway 需固定出口 IP）。"
         ),
     }
 
@@ -298,7 +338,7 @@ def _request_with_session_api_code(
         if _is_app_code_error(data.get("message")) and attempt == 0:
             invalidate_api_code()
             try:
-                # 强制重新申请；有账号密码时不会再用静态 CSCD_API_CODE
+                # 静态码过期后强制用账号密码重新申请
                 code = init_api_code(force_refresh=True)
             except ValueError:
                 return data

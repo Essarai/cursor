@@ -89,7 +89,8 @@ class CscdStatusResponse(BaseModel):
     has_cscd_user: bool
     has_cscd_password: bool
     has_static_api_code: bool
-    static_api_code_ignored: bool
+    prefer_credentials: bool = False
+    api_code_source: str = ""
     egress_ip: str | None = None
     get_api_code_ok: bool
     get_api_code_message: str = ""
