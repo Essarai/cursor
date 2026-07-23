@@ -376,7 +376,7 @@ function renderStage1Row(item) {
             type="button"
             class="table-action-btn stage1-copy-all-btn"
             data-rank="${item.rank}"
-            title="复制姓名、称呼、邮箱、单位、研究方向"
+            title="复制姓名、职称、邮箱、单位、研究方向"
           >复制全部信息</button>
         </div>
       </div>
@@ -601,7 +601,7 @@ function renderResult(reviewers) {
                     type="button"
                     class="copy-all-btn result-copy-all-btn"
                     data-index="${index}"
-                    title="复制姓名、称呼、邮箱、单位、研究方向"
+                    title="复制姓名、职称、邮箱、单位、研究方向"
                   >复制全部信息</button>
                 </div>
               </div>
@@ -701,7 +701,7 @@ function formatExpertCopyText(expert) {
         : renderResearchField(expert);
   return [
     `姓名：${name}`,
-    `称呼：${title}`,
+    `职称：${title}`,
     `邮箱：${email}`,
     `单位：${org}`,
     `研究方向：${field}`,
