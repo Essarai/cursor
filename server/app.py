@@ -16,9 +16,11 @@ from agent.author_pubs import fetch_author_pub_stats
 from agent.keyword_refine import refine_keywords
 from agent.runner import iter_agent_events
 from agent.types import PaperInput
+from cscd.client import diagnose_cscd
 from server.schemas import (
     AuthorPubsRequest,
     AuthorPubsResponse,
+    CscdStatusResponse,
     HealthResponse,
     RecommendRequest,
     RefineKeywordsRequest,
@@ -67,6 +69,16 @@ async def no_cache_static(request, call_next):
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
     return HealthResponse()
+
+
+@app.get(
+    "/api/v1/cscd/status",
+    response_model=CscdStatusResponse,
+    tags=["system"],
+)
+def cscd_status() -> CscdStatusResponse:
+    """排查线上 CSCD：出口 IP、凭证是否配置、getApiCode 是否成功（不返回码）。"""
+    return CscdStatusResponse(**diagnose_cscd())
 
 
 @app.post(

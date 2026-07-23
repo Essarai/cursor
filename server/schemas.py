@@ -82,3 +82,16 @@ class AuthorPubsResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str = "ok"
+
+
+class CscdStatusResponse(BaseModel):
+    base_url: str
+    has_cscd_user: bool
+    has_cscd_password: bool
+    has_static_api_code: bool
+    static_api_code_ignored: bool
+    egress_ip: str | None = None
+    get_api_code_ok: bool
+    get_api_code_message: str = ""
+    used_cached_api_code: bool = False
+    hint: str = ""
