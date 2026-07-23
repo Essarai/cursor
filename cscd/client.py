@@ -119,8 +119,9 @@ def _fetch_api_code_from_env() -> str:
 def init_api_code(force_refresh: bool = False) -> str:
     """初始化全局 ApiCode。
 
-    优先账号密码 getApiCode；若返回「申请失败」再回退 CSCD_API_CODE。
-    业务请求若报 AppCode 错误会再强制刷新。
+    有 CSCD_USER/PASSWORD 时只走 getApiCode，禁止回退 CSCD_API_CODE
+    （静态码约 10 分钟失效，回退极易导致 AppCode错误）。
+    仅未配置账号密码时，才使用 CSCD_API_CODE。
     """
     global _session_api_code, _session_api_code_expires_at
 
@@ -133,24 +134,22 @@ def init_api_code(force_refresh: bool = False) -> str:
         ):
             return _session_api_code
 
-        errors: list[str] = []
-        code: str | None = None
-
         if _has_cscd_credentials():
             try:
                 code = _fetch_api_code_from_credentials()
             except ValueError as exc:
-                errors.append(str(exc))
-
-        if code is None:
+                raise ValueError(
+                    f"CSCD ApiCode 获取失败：{exc}。"
+                    "已配置 CSCD_USER/CSCD_PASSWORD，不会回退 CSCD_API_CODE；"
+                    "请确认账号密码正确，或稍后再试（接口可能限流）。"
+                ) from exc
+        else:
             try:
                 code = _fetch_api_code_from_env()
             except ValueError as exc:
-                errors.append(str(exc))
-                detail = "；".join(errors) if errors else str(exc)
                 raise ValueError(
-                    f"CSCD ApiCode 获取失败：{detail}。"
-                    "请确认 CSCD_USER/CSCD_PASSWORD，或更新 CSCD_API_CODE 后重试。"
+                    f"CSCD ApiCode 获取失败：{exc}。"
+                    "请配置 CSCD_USER/CSCD_PASSWORD（推荐），或更新 CSCD_API_CODE。"
                 ) from exc
 
         _session_api_code = code
@@ -220,7 +219,7 @@ def _request_with_session_api_code(
         if _is_app_code_error(data.get("message")) and attempt == 0:
             invalidate_api_code()
             try:
-                # 强制走账号密码；若申请失败再退回静态码
+                # 强制重新申请；有账号密码时不会再用静态 CSCD_API_CODE
                 code = init_api_code(force_refresh=True)
             except ValueError:
                 return data
