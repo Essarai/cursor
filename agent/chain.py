@@ -52,6 +52,7 @@ def _build_llm(
     streaming: bool = False,
     json_mode: bool | None = None,
     temperature: float | None = None,
+    disable_thinking: bool = False,
 ) -> ChatOpenAI:
     api_key = (
         os.getenv("MINIMAX_API_KEY", "").strip()
@@ -88,8 +89,14 @@ def _build_llm(
             "false",
             "False",
         )
+    model_kwargs: Dict[str, Any] = {}
     if not streaming and use_json_mode:
-        kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
+        model_kwargs["response_format"] = {"type": "json_object"}
+    # MiniMax-M3：关闭思考链，显著缩短简单任务延迟
+    if disable_thinking:
+        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+    if model_kwargs:
+        kwargs["model_kwargs"] = model_kwargs
 
     return ChatOpenAI(**kwargs)
 
@@ -370,7 +377,7 @@ def build_screening_chain(*, streaming: bool = False):
 
 def stream_semantic_screening(llm_payload: Dict[str, Any]) -> None:
     """流式输出阶段三思考过程与精筛结果（NDJSON 事件）。"""
-    mode = os.getenv("AGENT_STAGE3_MODE", "agent").strip().lower()
+    mode = os.getenv("AGENT_STAGE3_MODE", "oneshot").strip().lower()
     if mode == "agent":
         try:
             from agent.decision_agent import run_decision_agent

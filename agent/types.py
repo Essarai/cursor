@@ -26,6 +26,7 @@ class ReviewerCandidate:
     position: str = ""
     resume: str = ""
     overlap_score: float = 0.0
+    pubs_last_5_years: int | None = None
 
 
 @dataclass
@@ -65,10 +66,18 @@ def reviewer_to_dict(candidate: ReviewerCandidate) -> Dict[str, Any]:
         "position": candidate.position,
         "resume": candidate.resume,
         "overlap_score": candidate.overlap_score,
+        "pubs_last_5_years": candidate.pubs_last_5_years,
     }
 
 
 def reviewer_from_dict(data: Dict[str, Any]) -> ReviewerCandidate:
+    pubs_raw = data.get("pubs_last_5_years")
+    try:
+        pubs_last_5 = (
+            int(pubs_raw) if pubs_raw not in (None, "", "null") else None
+        )
+    except (TypeError, ValueError):
+        pubs_last_5 = None
     return ReviewerCandidate(
         id=str(data.get("id") or ""),
         name=str(data.get("name") or "").strip(),
@@ -80,6 +89,7 @@ def reviewer_from_dict(data: Dict[str, Any]) -> ReviewerCandidate:
         position=str(data.get("position") or "").strip(),
         resume=str(data.get("resume") or "").strip(),
         overlap_score=float(data.get("overlap_score") or 0.0),
+        pubs_last_5_years=pubs_last_5,
     )
 
 
@@ -103,6 +113,15 @@ def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
     except (TypeError, ValueError):
         hindex = 0.0
 
+    # CSCD getPeerReviewers：numAllpaper 为近 5 年发文量
+    pubs_raw = raw.get("numAllpaper")
+    try:
+        pubs_last_5 = (
+            int(float(pubs_raw)) if pubs_raw not in (None, "", "null") else None
+        )
+    except (TypeError, ValueError):
+        pubs_last_5 = None
+
     return ReviewerCandidate(
         id=str(raw.get("id") or ""),
         name=str(raw.get("authorName") or "").strip(),
@@ -113,4 +132,5 @@ def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
         subject=str(raw.get("subject") or "").strip(),
         position=str(raw.get("position") or "").strip(),
         resume=_normalize_resume(raw.get("resume")),
+        pubs_last_5_years=pubs_last_5,
     )

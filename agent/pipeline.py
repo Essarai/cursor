@@ -71,6 +71,7 @@ def _expert_dict(candidate: ReviewerCandidate, rank: int, *, selected: bool) -> 
         "org": candidate.org,
         "email": candidate.email,
         "hindex": candidate.hindex,
+        "pubs_last_5_years": candidate.pubs_last_5_years,
         "subject": candidate.subject,
         "position": candidate.position,
         "resume": candidate.resume,

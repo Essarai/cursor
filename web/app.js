@@ -66,6 +66,8 @@ let pendingPayload = null;
 let activeFilter = "all";
 let lastReviewers = [];
 let lastStage1Experts = [];
+/** @type {"overlap" | "pubs5" | "hindex"} */
+let stage1SortBy = "overlap";
 let activePaperKeywords = "";
 const stage2Progress = [];
 const pubsCache = new Map();
@@ -202,6 +204,7 @@ function renderStage1Empty(statusText = "正在召回候选人…") {
         仅入选
       </label>
       <span class="stage1-count" id="stage1Count">0 / 0</span>
+      ${stage1SortControlsHtml({ disabled: true })}
     </div>
     <div class="stage1-scroll">
       <ul class="stage1-list" id="stage1List">
@@ -384,10 +387,49 @@ function renderStage1Row(item) {
   `;
 }
 
+function stage1SortControlsHtml({ disabled = false } = {}) {
+  const opts = [
+    { value: "overlap", label: "关键词重合度" },
+    { value: "pubs5", label: "近5年发文" },
+    { value: "hindex", label: "H指数" },
+  ];
+  return `
+    <div class="stage1-sort" role="group" aria-label="排序规则">
+      <span class="stage1-sort-label">排序</span>
+      ${opts
+        .map(
+          (opt) => `
+        <label class="stage1-sort-option">
+          <input
+            type="radio"
+            name="stage1Sort"
+            value="${opt.value}"
+            ${stage1SortBy === opt.value ? "checked" : ""}
+            ${disabled ? "disabled" : ""}
+          />
+          ${opt.label}
+        </label>
+      `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function stage1MetricValue(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : Number.NEGATIVE_INFINITY;
+}
+
 function getFilteredStage1Experts() {
   const query = (document.getElementById("stage1Search")?.value || "").trim().toLowerCase();
   const selectedOnly = document.getElementById("stage1SelectedOnly")?.checked;
-  return lastStage1Experts.filter((item) => {
+  const sortInput = document.querySelector('input[name="stage1Sort"]:checked');
+  if (sortInput?.value) {
+    stage1SortBy = sortInput.value;
+  }
+
+  const filtered = lastStage1Experts.filter((item) => {
     if (selectedOnly && !item.selected) return false;
     if (!query) return true;
     const haystack = [
@@ -402,6 +444,18 @@ function getFilteredStage1Experts() {
       .toLowerCase();
     return haystack.includes(query);
   });
+
+  const sorted = filtered.slice();
+  sorted.sort((a, b) => {
+    if (stage1SortBy === "pubs5") {
+      return stage1MetricValue(b.pubs_last_5_years) - stage1MetricValue(a.pubs_last_5_years);
+    }
+    if (stage1SortBy === "hindex") {
+      return stage1MetricValue(b.hindex) - stage1MetricValue(a.hindex);
+    }
+    return stage1MetricValue(b.overlap_score) - stage1MetricValue(a.overlap_score);
+  });
+  return sorted;
 }
 
 function updateStage1TableBody() {
@@ -445,6 +499,7 @@ function renderStage1(thinking) {
         仅入选
       </label>
       <span class="stage1-count" id="stage1Count"></span>
+      ${stage1SortControlsHtml()}
     </div>
     <div class="stage1-scroll">
       <ul class="stage1-list" id="stage1List"></ul>
@@ -1508,7 +1563,7 @@ stage1Body.addEventListener("input", (e) => {
 });
 
 stage1Body.addEventListener("change", (e) => {
-  if (e.target.id === "stage1SelectedOnly") {
+  if (e.target.id === "stage1SelectedOnly" || e.target.name === "stage1Sort") {
     updateStage1TableBody();
   }
 });

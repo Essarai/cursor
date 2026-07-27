@@ -1025,6 +1025,38 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+.stage1-sort {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding-top: 2px;
+}
+
+.stage1-sort-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.stage1-sort-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text);
+  user-select: none;
+  cursor: pointer;
+}
+
+.stage1-sort-option input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .stage1-scroll {
   max-height: min(720px, calc(100vh - 210px));
   overflow: auto;
@@ -1044,8 +1076,9 @@ button:disabled {
 
 .author-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 12px 16px;
+  align-items: start;
   padding: 12px 14px;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -1238,9 +1271,11 @@ button:disabled {
   align-items: stretch;
   justify-content: space-between;
   gap: 8px;
-  flex-shrink: 0;
-  width: max-content;
-  min-width: 0;
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+  justify-self: end;
+  box-sizing: border-box;
 }
 
 .author-metrics {
@@ -1335,12 +1370,16 @@ button:disabled {
 .badge-selected,
 .badge-muted {
   flex-shrink: 0;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.6em;
   padding: 2px 7px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .badge-selected {
@@ -1657,6 +1696,9 @@ button:disabled {
     flex-direction: column;
     justify-content: flex-start;
     width: 100%;
+    min-width: 0;
+    max-width: none;
+    justify-self: stretch;
   }
 
   .author-meta,
