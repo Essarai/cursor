@@ -349,10 +349,22 @@ function renderStage1Row(item) {
                 : ""
             }
           </div>
-          <div class="metric" title="H 指数">
-            <div class="metric-row">
-              <span class="metric-label">H 指数</span>
-              <span class="metric-value">${item.hindex ?? "-"}</span>
+          <div class="metric-pair">
+            <div class="metric metric-cell" title="H 指数">
+              <div class="metric-row metric-row-end">
+                <span class="metric-label">H 指数</span>
+                <span class="metric-value">${item.hindex ?? "-"}</span>
+              </div>
+            </div>
+            <div class="metric metric-cell" title="近 5 年发文量（CSCD numAllpaper）">
+              <div class="metric-row metric-row-end">
+                <span class="metric-label">近5年发文</span>
+                <span class="metric-value">${
+                  item.pubs_last_5_years != null && item.pubs_last_5_years !== ""
+                    ? item.pubs_last_5_years
+                    : "-"
+                }</span>
+              </div>
             </div>
           </div>
         </div>

@@ -1285,6 +1285,19 @@ button:disabled {
   width: 100%;
 }
 
+.metric-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  align-items: baseline;
+}
+
+.metric-pair .metric-cell {
+  width: 100%;
+  min-width: 0;
+}
+
 .metric {
   display: flex;
   flex-direction: column;
@@ -1299,6 +1312,20 @@ button:disabled {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
+}
+
+.metric-pair .metric-row-end {
+  justify-content: flex-start;
+  gap: 2px;
+  width: 100%;
+}
+
+.metric-pair .metric-row-end .metric-label {
+  flex: 0 0 auto;
+}
+
+.metric-pair .metric-row-end .metric-value {
+  flex: 0 0 auto;
 }
 
 .metric-label {
