@@ -11,7 +11,7 @@ from agent.tools import fetch_author_info_with_memory
 ROLE_NOTE = (
     "一作按 authorSequence=1；通讯暂按末位作者近似"
     "（CSCD 接口无通讯作者字段）；其余记为其他。同一篇论文只计入一类。"
-    "统计范围：作者发文中与论文关键词匹配的文献。"
+    "统计范围：按作者姓名与机构从 CSCD 拉取的发文。"
 )
 
 _MAX_PAGES = 40
@@ -194,7 +194,10 @@ def fetch_author_pub_stats(
     *,
     author_id: str = "",
 ) -> Dict[str, Any]:
-    """按姓名拉发文，再用关键词筛选后按年聚合角色统计。"""
+    """按姓名+机构拉发文，再按年聚合角色统计。
+
+    keywords 保留兼容字段，不再用于筛选；有值时仍会回填到响应里。
+    """
     author = author.strip()
     institute = institute.strip()
     keywords = keywords.strip()
@@ -204,8 +207,8 @@ def fetch_author_pub_stats(
 
     if not author:
         raise ValueError("请填写作者姓名")
-    if not keyword_list:
-        raise ValueError("请提供论文关键词，用于筛选相关发文")
+    if not institute:
+        raise ValueError("请填写作者机构")
 
     if not pub_year:
         end = datetime.now().year
@@ -218,15 +221,10 @@ def fetch_author_pub_stats(
         author_id=author_id,
     )
 
-    matched_articles = [
-        article for article in articles if _article_matches_keywords(article, keyword_list)
-    ]
-    # 关键词过严导致 0 命中时回退全量，避免弹窗空白
+    # 不再按论文关键词过滤，直接统计该作者在机构下的全部发文
     used_fallback = False
-    scoped = matched_articles
-    if not scoped and articles:
-        scoped = articles
-        used_fallback = True
+    scoped = articles
+    matched_articles = articles
 
     by_year: Dict[int, Dict[str, int]] = defaultdict(
         lambda: {"first": 0, "corresponding": 0, "other": 0}
@@ -260,10 +258,6 @@ def fetch_author_pub_stats(
         "other": sum(series["other"]),
     }
 
-    note = ROLE_NOTE
-    if used_fallback:
-        note += " 关键词未命中文献，已回退为该作者全部发文。"
-
     return {
         "author": author,
         "institute": institute,
@@ -275,7 +269,7 @@ def fetch_author_pub_stats(
         "keyword_matched": len(matched_articles),
         "used_fallback": used_fallback,
         "unmatched": unmatched,
-        "role_note": note,
+        "role_note": ROLE_NOTE,
         "totals": totals,
         "by_year": [
             {

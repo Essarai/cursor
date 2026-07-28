@@ -33,12 +33,15 @@ class RefineKeywordsResponse(BaseModel):
 
 class AuthorPubsRequest(BaseModel):
     author: str = Field(..., min_length=1, description="作者姓名")
-    keywords: str = Field(..., min_length=1, description="论文关键词，逗号分隔，用于筛选相关发文")
-    institute: str = Field(default="", description="作者机构（可选，用于消歧）")
+    institute: str = Field(..., min_length=1, description="作者机构（用于消歧）")
     author_id: str = Field(default="", description="CSCD 作者 ID（可选）")
     pub_year: str = Field(
         default="",
         description="发表年份范围，如 2010-2026；空则默认近 20 年",
+    )
+    keywords: str = Field(
+        default="",
+        description="兼容旧字段，已不再用于筛选发文",
     )
 
 

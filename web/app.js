@@ -246,7 +246,7 @@ function escapeHtml(text) {
 }
 
 function pubsCacheKey(item) {
-  return `${item.id || ""}|${item.name || ""}|${activePaperKeywords}`;
+  return `${item.id || ""}|${item.name || ""}|${item.org || ""}`;
 }
 
 function renderKeywordTags(keywords) {
@@ -300,7 +300,7 @@ function overlapTone(score) {
 
 function renderStage1Row(item) {
   const hasEmail = Boolean(item.email?.trim());
-  const canViewPubs = Boolean(item.name?.trim() && activePaperKeywords);
+  const canViewPubs = Boolean(item.name?.trim() && String(item.org || "").trim());
   const org = item.org || "-";
   const position = String(item.position || "").trim();
   const resume = String(item.resume || "").trim();
@@ -636,7 +636,7 @@ function renderResult(reviewers) {
     <div class="reviewer-grid">
       ${reviewers
         .map((item, index) => {
-          const canViewPubs = Boolean(item.name?.trim() && activePaperKeywords);
+          const canViewPubs = Boolean(item.name?.trim() && String(item.org || "").trim());
           return `
             <article class="reviewer-card">
               <div class="reviewer-head">
@@ -1216,7 +1216,7 @@ function openPubsModal(expert) {
   pubsFilterYear = null;
   lastPubsData = null;
   pubsModalTitle.textContent = "历史发文统计";
-  pubsModalSubtitle.textContent = `${expert.name}${expert.org ? ` · ${expert.org}` : ""} · 关键词 ${activePaperKeywords}`;
+  pubsModalSubtitle.textContent = `${expert.name}${expert.org ? ` · ${expert.org}` : ""}`;
   pubsModal.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
@@ -1403,11 +1403,11 @@ function renderPubsStats(data) {
     (data.totals?.corresponding || 0) +
     (data.totals?.other || 0);
   pubsModalTitle.textContent = `历史发文 · 共 ${totalMatched} 篇`;
-  pubsModalSubtitle.textContent = `${data.author}${data.institute ? ` · ${data.institute}` : ""} · ${(data.keywords || []).join("、")}`;
+  pubsModalSubtitle.textContent = `${data.author}${data.institute ? ` · ${data.institute}` : ""}`;
   pubsModalBody.innerHTML = `
     <div class="stats-row">
       <span class="stat-chip">拉取 ${data.fetched ?? 0}</span>
-      <span class="stat-chip">关键词命中 ${data.keyword_matched ?? 0}</span>
+      <span class="stat-chip">计入 ${totalMatched}</span>
       <span class="stat-chip">一作 ${data.totals?.first ?? 0}</span>
       <span class="stat-chip">通讯 ${data.totals?.corresponding ?? 0}</span>
       <span class="stat-chip">其他 ${data.totals?.other ?? 0}</span>
@@ -1433,17 +1433,23 @@ async function queryAuthorPubs(expert) {
   }
 
   const token = ++pubsRequestToken;
-  pubsModalBody.innerHTML = `<p class="placeholder">正在按姓名 + 关键词拉取历史发文…</p>`;
+  pubsModalBody.innerHTML = `<p class="placeholder">正在按姓名 + 机构拉取历史发文…</p>`;
   setConnectionStatus("running", "发文查询中…");
 
   try {
+    const institute = (expert.org || "").trim();
+    if (!expert.name?.trim()) {
+      throw new Error("缺少作者姓名");
+    }
+    if (!institute) {
+      throw new Error("缺少作者机构，无法查询历史发文");
+    }
     const res = await fetch(ENDPOINTS.authorPubs, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         author: expert.name,
-        keywords: activePaperKeywords,
-        institute: expert.org || "",
+        institute,
         author_id: expert.id || "",
         pub_year: "",
       }),
@@ -1542,7 +1548,7 @@ resultBody.addEventListener("click", async (e) => {
         org: reviewer.org || "",
       });
     } finally {
-      pubsBtn.disabled = !(reviewer.name?.trim() && activePaperKeywords);
+      pubsBtn.disabled = !(reviewer.name?.trim() && String(reviewer.org || "").trim());
       pubsBtn.textContent = original;
     }
     return;
@@ -1592,7 +1598,7 @@ stage1Body.addEventListener("click", async (e) => {
     try {
       await queryAuthorPubs(expert);
     } finally {
-      pubsBtn.disabled = !(expert.name?.trim() && activePaperKeywords);
+      pubsBtn.disabled = !(expert.name?.trim() && String(expert.org || "").trim());
       pubsBtn.textContent = original;
     }
     return;

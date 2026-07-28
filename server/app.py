@@ -107,14 +107,14 @@ def refine_paper_keywords(body: RefineKeywordsRequest) -> RefineKeywordsResponse
     tags=["authors"],
 )
 def author_publication_stats(body: AuthorPubsRequest) -> AuthorPubsResponse:
-    """按作者姓名拉发文，并用论文关键词筛选后按年聚合一作/通讯/其他。"""
+    """按作者姓名与机构拉发文，并按年聚合一作/通讯/其他。"""
     try:
         result = fetch_author_pub_stats(
             author=body.author,
-            keywords=body.keywords,
             institute=body.institute,
             pub_year=body.pub_year,
             author_id=body.author_id,
+            keywords=body.keywords,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
