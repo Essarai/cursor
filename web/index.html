@@ -72,11 +72,11 @@
             </label>
 
             <label>
-              <span>原作者机构</span>
+              <span>排除机构</span>
               <input
                 type="text"
                 name="author_org"
-                placeholder="选填，填写后触发 COI 机构熔断"
+                placeholder="选填，填写后触发利益冲突筛选，排除对应机构"
                 value="浙江大学"
                 autocomplete="organization"
               />
@@ -85,7 +85,7 @@
             <div class="form-actions">
               <button type="button" id="directSearchBtn" class="primary-btn">开始检索</button>
               <button type="button" id="refineBtn" class="primary-btn hidden">开始智能检索</button>
-              <button type="button" id="newPaperBtn" class="secondary" title="清空论文信息，保留机构">新一篇</button>
+              <button type="button" id="newPaperBtn" class="secondary" title="清空信息">新一篇</button>
               <button type="button" id="stopBtn" class="secondary" disabled>停止</button>
             </div>
           </form>
@@ -114,7 +114,7 @@
             <button type="button" class="tab" data-stage="stage1">候选专家</button>
             <button type="button" class="tab" data-stage="stage2">背景补全</button>
             <button type="button" class="tab" data-stage="stage3">语义精筛</button>
-            <button type="button" class="tab" data-stage="result">AI推荐结果</button>
+            <button type="button" class="tab" data-stage="result">AI推荐</button>
           </div>
         </div>
 

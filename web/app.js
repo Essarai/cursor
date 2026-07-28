@@ -801,7 +801,7 @@ function resetUI() {
 }
 
 /** 换下一篇稿：清空论文字段与结果区，默认保留机构。 */
-function startNewPaper({ keepAuthorOrg = true } = {}) {
+function startNewPaper({ keepAuthorOrg = false } = {}) {
   if (abortController) {
     abortReason = "user";
     pendingAutoRefine = false;
@@ -1403,7 +1403,7 @@ function renderPubsStats(data) {
     (data.totals?.corresponding || 0) +
     (data.totals?.other || 0);
   pubsModalTitle.textContent = `历史发文 · 共 ${totalMatched} 篇`;
-  pubsModalSubtitle.textContent = `${data.author}${data.org ? ` · ${data.org}` : ""} · ${(data.keywords || []).join("、")}`;
+  pubsModalSubtitle.textContent = `${data.author}${data.institute ? ` · ${data.institute}` : ""} · ${(data.keywords || []).join("、")}`;
   pubsModalBody.innerHTML = `
     <div class="stats-row">
       <span class="stat-chip">拉取 ${data.fetched ?? 0}</span>
@@ -1443,7 +1443,7 @@ async function queryAuthorPubs(expert) {
       body: JSON.stringify({
         author: expert.name,
         keywords: activePaperKeywords,
-        org: expert.org || "",
+        institute: expert.org || "",
         author_id: expert.id || "",
         pub_year: "",
       }),
@@ -1484,7 +1484,7 @@ modeDirectBtn.addEventListener("click", () => setFormMode("direct"));
 modeRefineBtn.addEventListener("click", () => setFormMode("refine"));
 directSearchBtn.addEventListener("click", () => startDirectRecommend());
 refineBtn.addEventListener("click", () => startSmartRecommend());
-newPaperBtn?.addEventListener("click", () => startNewPaper({ keepAuthorOrg: true }));
+newPaperBtn?.addEventListener("click", () => startNewPaper({ keepAuthorOrg: false }));
 
 stopBtn.addEventListener("click", () => {
   pendingAutoRefine = false;

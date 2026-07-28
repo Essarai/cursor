@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--author-org",
         default="",
-        help="原作者机构（选填，填写则触发 COI 熔断）",
+        help="排查机构（选填，填写则触发利益冲突筛选，排除对应机构）",
     )
     parser.add_argument("--extra", default="", help="补充说明")
     return parser.parse_args()

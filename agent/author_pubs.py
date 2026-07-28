@@ -150,7 +150,7 @@ def _article_matches_keywords(article: Dict[str, Any], keywords: List[str]) -> b
 
 def _fetch_all_articles(
     author: str,
-    org: str,
+    institute: str,
     pub_year: str,
     *,
     author_id: str = "",
@@ -162,12 +162,12 @@ def _fetch_all_articles(
     for page in range(1, _MAX_PAGES + 1):
         response = fetch_author_info_with_memory(
             author=author,
-            org=org,
+            org=institute,
             pub_year=pub_year,
             page=page,
             limit=_PAGE_SIZE,
             author_id=author_id,
-            strict_identity=bool(org.strip()),
+            strict_identity=bool(institute.strip()),
         )
         if not response.get("success"):
             message = response.get("message") or "CSCD 发文检索失败"
@@ -189,14 +189,14 @@ def _fetch_all_articles(
 def fetch_author_pub_stats(
     author: str,
     keywords: str = "",
-    org: str = "",
+    institute: str = "",
     pub_year: str = "",
     *,
     author_id: str = "",
 ) -> Dict[str, Any]:
     """按姓名拉发文，再用关键词筛选后按年聚合角色统计。"""
     author = author.strip()
-    org = org.strip()
+    institute = institute.strip()
     keywords = keywords.strip()
     pub_year = pub_year.strip()
     author_id = author_id.strip()
@@ -213,7 +213,7 @@ def fetch_author_pub_stats(
 
     articles, total, identity_verified = _fetch_all_articles(
         author,
-        org,
+        institute,
         pub_year,
         author_id=author_id,
     )
@@ -266,7 +266,7 @@ def fetch_author_pub_stats(
 
     return {
         "author": author,
-        "org": org,
+        "institute": institute,
         "keywords": keyword_list,
         "pub_year": pub_year,
         "identity_verified": identity_verified,

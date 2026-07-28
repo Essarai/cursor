@@ -112,7 +112,7 @@ def author_publication_stats(body: AuthorPubsRequest) -> AuthorPubsResponse:
         result = fetch_author_pub_stats(
             author=body.author,
             keywords=body.keywords,
-            org=body.org,
+            institute=body.institute,
             pub_year=body.pub_year,
             author_id=body.author_id,
         )

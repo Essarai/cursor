@@ -34,7 +34,7 @@ class RefineKeywordsResponse(BaseModel):
 class AuthorPubsRequest(BaseModel):
     author: str = Field(..., min_length=1, description="作者姓名")
     keywords: str = Field(..., min_length=1, description="论文关键词，逗号分隔，用于筛选相关发文")
-    org: str = Field(default="", description="作者机构（可选，用于消歧）")
+    institute: str = Field(default="", description="作者机构（可选，用于消歧）")
     author_id: str = Field(default="", description="CSCD 作者 ID（可选）")
     pub_year: str = Field(
         default="",
@@ -64,7 +64,7 @@ class AuthorPubsPaperItem(BaseModel):
 
 class AuthorPubsResponse(BaseModel):
     author: str
-    org: str = ""
+    institute: str = ""
     keywords: List[str] = Field(default_factory=list)
     pub_year: str
     identity_verified: bool = False
