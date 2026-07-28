@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSCD 审稿人推荐</title>
-  <link rel="stylesheet" href="/styles.css?v=20260721r" />
+  <link rel="stylesheet" href="/styles.css?v=20260728a" />
 </head>
 <body>
   <div class="layout">
@@ -76,7 +76,7 @@
               <input
                 type="text"
                 name="author_org"
-                placeholder="选填，填写后触发利益冲突筛选，排除对应机构"
+                placeholder="选填，填写后排除该机构审稿人"
                 value="浙江大学"
                 autocomplete="organization"
               />
@@ -110,10 +110,7 @@
         <div class="output-header">
           <h2>推荐过程</h2>
           <div class="stage-tabs" id="stageTabs">
-            <button type="button" class="tab active" data-stage="all">全部</button>
-            <button type="button" class="tab" data-stage="stage1">候选专家</button>
-            <button type="button" class="tab" data-stage="stage2">背景补全</button>
-            <button type="button" class="tab" data-stage="stage3">语义精筛</button>
+            <button type="button" class="tab active" data-stage="stage1">候选专家</button>
             <button type="button" class="tab" data-stage="result">AI推荐</button>
           </div>
         </div>
@@ -133,7 +130,7 @@
             </div>
           </article>
 
-          <article class="stage-card idle" data-stage="stage2">
+          <article class="stage-card idle hidden" data-stage="stage2" aria-hidden="true">
             <div class="stage-head">
               <span class="stage-badge">2</span>
               <div>
@@ -147,7 +144,7 @@
             </div>
           </article>
 
-          <article class="stage-card idle" data-stage="stage3">
+          <article class="stage-card idle hidden" data-stage="stage3" aria-hidden="true">
             <div class="stage-head">
               <span class="stage-badge">3</span>
               <div>
@@ -161,11 +158,11 @@
             </div>
           </article>
 
-          <article class="stage-card idle" data-stage="result">
+          <article class="stage-card idle hidden" data-stage="result">
             <div class="stage-head">
               <span class="stage-badge">✓</span>
               <div>
-                <h3>AI推荐结果</h3>
+                <h3>AI推荐</h3>
                 <p class="stage-desc">精选 3–5 位</p>
               </div>
               <span class="stage-state" id="resultState">等待中</span>
@@ -194,6 +191,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260721r"></script>
+  <script src="/app.js?v=20260728b"></script>
 </body>
 </html>

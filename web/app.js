@@ -63,7 +63,7 @@ const resultState = document.getElementById("resultState");
 
 let abortController = null;
 let pendingPayload = null;
-let activeFilter = "all";
+let activeFilter = "stage1";
 let lastReviewers = [];
 let lastStage1Experts = [];
 /** @type {"overlap" | "pubs5" | "hindex"} */
@@ -188,9 +188,8 @@ function renderStage1Empty(statusText = "正在召回候选人…") {
     <div class="stage1-toolbar">
       <div class="stats-row stats-row-inline">
         <span class="stat-chip">召回 -</span>
-        <span class="stat-chip">COI -</span>
+        <span class="stat-chip">利益冲突 -</span>
         <span class="stat-chip">入选 -</span>
-        <span class="stat-chip">≥ 0.50</span>
       </div>
       <input
         type="search"
@@ -496,9 +495,8 @@ function renderStage1(thinking) {
     <div class="stage1-toolbar">
       <div class="stats-row stats-row-inline">
         <span class="stat-chip">召回 ${thinking.total_from_api ?? 0}</span>
-        <span class="stat-chip">COI ${thinking.after_coi ?? 0}</span>
+        <span class="stat-chip">利益冲突 ${thinking.coi_filtered_count ?? 0}</span>
         <span class="stat-chip">入选 ${selectedCount}</span>
-        <span class="stat-chip">≥ ${(thinking.min_overlap_threshold ?? 0.5).toFixed?.(2) ?? thinking.min_overlap_threshold ?? "0.5"}</span>
       </div>
       <input
         type="search"
@@ -797,7 +795,7 @@ function resetUI() {
   stage2Body.innerHTML = `<p class="placeholder">等待候选专家完成…</p>`;
   stage3Body.innerHTML = `<p class="placeholder">等待背景补全完成…</p>`;
   resultBody.innerHTML = `<p class="placeholder">精荐完成后展示…</p>`;
-  applyStageFilter("all");
+  applyStageFilter("stage1");
 }
 
 /** 换下一篇稿：清空论文字段与结果区，默认保留机构。 */
@@ -839,7 +837,7 @@ function startNewPaper({ keepAuthorOrg = false } = {}) {
   stage2Body.innerHTML = `<p class="placeholder">等待候选匹配…</p>`;
   stage3Body.innerHTML = `<p class="placeholder">等待背景补全…</p>`;
   resultBody.innerHTML = `<p class="placeholder">精荐完成后展示…</p>`;
-  applyStageFilter("all");
+  applyStageFilter("stage1");
 
   setFormBusy(false);
   stopBtn.disabled = true;
@@ -850,15 +848,16 @@ function startNewPaper({ keepAuthorOrg = false } = {}) {
 }
 
 function applyStageFilter(filter) {
-  const allowed = new Set(["all", "stage1", "stage2", "stage3", "result"]);
-  const next = allowed.has(filter) ? filter : "all";
+  const allowed = new Set(["stage1", "result"]);
+  const next = allowed.has(filter) ? filter : "stage1";
   activeFilter = next;
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.stage === next);
   });
   document.querySelectorAll(".stage-card").forEach((card) => {
     const stage = card.dataset.stage;
-    const visible = next === "all" || stage === next;
+    // 阶段二/三仅后台更新，界面不展示
+    const visible = stage === next;
     card.classList.toggle("hidden", !visible);
   });
 }
@@ -953,6 +952,7 @@ function handleEvent(event) {
 
     case "stage3_done":
       renderResult(event.reviewers || []);
+      applyStageFilter("result");
       setConnectionStatus("ok", "推荐完成");
       break;
 
@@ -1406,8 +1406,6 @@ function renderPubsStats(data) {
   pubsModalSubtitle.textContent = `${data.author}${data.institute ? ` · ${data.institute}` : ""}`;
   pubsModalBody.innerHTML = `
     <div class="stats-row">
-      <span class="stat-chip">拉取 ${data.fetched ?? 0}</span>
-      <span class="stat-chip">计入 ${totalMatched}</span>
       <span class="stat-chip">一作 ${data.totals?.first ?? 0}</span>
       <span class="stat-chip">通讯 ${data.totals?.corresponding ?? 0}</span>
       <span class="stat-chip">其他 ${data.totals?.other ?? 0}</span>
@@ -1631,7 +1629,7 @@ refinedKeywordsToggle?.addEventListener("click", () => {
 
 checkHealth();
 setFormMode("direct");
-applyStageFilter("all");
+applyStageFilter("stage1");
 renderStage1Empty("提交论文信息后开始召回…");
 setStageCard("stage1", "idle");
 setStageLabel(stage1State, "等待中");
