@@ -407,7 +407,8 @@ def _stream_oneshot_screening(llm_payload: Dict[str, Any]) -> None:
             "thinking": {
                 "summary": (
                     f"开始对 {len(llm_payload.get('candidates') or [])} 位候选人"
-                    "进行 LLM 语义精筛，以下为模型思考过程："
+                    "进行语义精筛。\n\n"
+                    "模型将用中文梳理匹配逻辑，完成后输出推荐名单。"
                 ),
             },
         },

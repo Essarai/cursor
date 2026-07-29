@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CSCD 审稿人推荐</title>
-  <link rel="stylesheet" href="/styles.css?v=20260728a" />
+  <link rel="stylesheet" href="/styles.css?v=20260729f" />
 </head>
 <body>
   <div class="layout">
@@ -15,7 +15,7 @@
             <p class="eyebrow">CSCD</p>
             <h1>审稿人推荐Agent</h1>
           </div>
-          <p class="subtitle">候选匹配 · AI 精荐</p>
+          <p class="subtitle">候选匹配 · AI 推荐</p>
         </div>
         <div class="status-pill" id="connectionStatus">
           <span class="dot"></span>
@@ -111,14 +111,13 @@
           <h2>推荐过程</h2>
           <div class="stage-tabs" id="stageTabs">
             <button type="button" class="tab active" data-stage="stage1">候选专家</button>
-            <button type="button" class="tab" data-stage="result">AI推荐</button>
+            <button type="button" class="tab" data-stage="stage3">AI推荐</button>
           </div>
         </div>
 
         <div class="timeline" id="timeline">
           <article class="stage-card idle" data-stage="stage1">
             <div class="stage-head">
-              <span class="stage-badge">1</span>
               <div>
                 <h3>候选专家</h3>
                 <p class="stage-desc">关键词召回 · 利益回避 · 相关度</p>
@@ -130,9 +129,8 @@
             </div>
           </article>
 
-          <article class="stage-card idle hidden" data-stage="stage2" aria-hidden="true">
+          <article class="stage-card idle hidden" data-stage="stage2" aria-hidden="true" hidden>
             <div class="stage-head">
-              <span class="stage-badge">2</span>
               <div>
                 <h3>背景补全</h3>
                 <p class="stage-desc">发文 · 活跃度</p>
@@ -144,31 +142,16 @@
             </div>
           </article>
 
-          <article class="stage-card idle hidden" data-stage="stage3" aria-hidden="true">
+          <article class="stage-card idle" data-stage="stage3">
             <div class="stage-head">
-              <span class="stage-badge">3</span>
               <div>
-                <h3>语义精筛</h3>
-                <p class="stage-desc">模型推理</p>
+                <h3>AI推荐</h3>
+                <p class="stage-desc">思考过程 · 推荐结果</p>
               </div>
               <span class="stage-state" id="stage3State">等待中</span>
             </div>
             <div class="stage-body" id="stage3Body">
               <p class="placeholder">等待背景补全完成…</p>
-            </div>
-          </article>
-
-          <article class="stage-card idle hidden" data-stage="result">
-            <div class="stage-head">
-              <span class="stage-badge">✓</span>
-              <div>
-                <h3>AI推荐</h3>
-                <p class="stage-desc">精选 3–5 位</p>
-              </div>
-              <span class="stage-state" id="resultState">等待中</span>
-            </div>
-            <div class="stage-body" id="resultBody">
-              <p class="placeholder">精荐完成后展示…</p>
             </div>
           </article>
         </div>
@@ -191,6 +174,8 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260728b"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  <script src="/app.js?v=20260729f"></script>
 </body>
 </html>

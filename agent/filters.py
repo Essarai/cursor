@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Sequence, Set, Tuple
 
 from agent.types import ReviewerCandidate
 
+_ROOT = Path(__file__).resolve().parents[1]
 _SPLIT_RE = re.compile(r"[;；,，、\n]+")
 _PART_SPLIT_RE = re.compile(r"[/\s·]+")
 
@@ -16,6 +19,166 @@ STAGE1_MAX_SELECTED = int(os.getenv("AGENT_STAGE1_MAX_SELECTED", "25"))
 # 多词聚合：最佳命中权重 + 均值权重（需和为 1）
 _OVERLAP_MAX_WEIGHT = float(os.getenv("AGENT_OVERLAP_MAX_WEIGHT", "0.6"))
 _OVERLAP_MEAN_WEIGHT = 1.0 - _OVERLAP_MAX_WEIGHT
+
+# 阶段一入选敏感过滤（军事/国防相关，避免后续 LLM 内容审核失败）
+_SENSITIVE_FILTER_ENABLED = os.getenv("AGENT_STAGE1_SENSITIVE_FILTER", "1").strip() not in (
+    "0",
+    "false",
+    "False",
+)
+
+# 黑名单配置：默认 config/stage1_blacklist.json，可用环境变量覆盖路径
+_DEFAULT_BLACKLIST_PATH = _ROOT / "config" / "stage1_blacklist.json"
+_blacklist_cache: Dict[str, Any] | None = None
+_blacklist_mtime: float | None = None
+
+def _blacklist_path() -> Path:
+    custom = os.getenv("AGENT_STAGE1_BLACKLIST_PATH", "").strip()
+    return Path(custom) if custom else _DEFAULT_BLACKLIST_PATH
+
+
+def _norm_person(value: str) -> str:
+    return re.sub(r"\s+", "", str(value or "").strip().lower())
+
+
+def load_stage1_blacklist(*, force: bool = False) -> Dict[str, Any]:
+    """读取阶段一黑名单配置（按文件 mtime 自动热更新）。"""
+    global _blacklist_cache, _blacklist_mtime
+    path = _blacklist_path()
+    try:
+        mtime = path.stat().st_mtime if path.is_file() else None
+    except OSError:
+        mtime = None
+
+    if (
+        not force
+        and _blacklist_cache is not None
+        and _blacklist_mtime == mtime
+    ):
+        return _blacklist_cache
+
+    empty: Dict[str, Any] = {
+        "names": set(),
+        "emails": set(),
+        "candidate_ids": set(),
+        "name_orgs": set(),
+    }
+    if mtime is None:
+        _blacklist_cache = empty
+        _blacklist_mtime = None
+        return empty
+
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        _blacklist_cache = empty
+        _blacklist_mtime = mtime
+        return empty
+
+    names = {
+        _norm_person(x)
+        for x in (raw.get("names") or [])
+        if str(x).strip()
+    }
+    emails = {
+        _norm_person(x)
+        for x in (raw.get("emails") or [])
+        if str(x).strip()
+    }
+    candidate_ids = {
+        str(x).strip()
+        for x in (raw.get("candidate_ids") or [])
+        if str(x).strip()
+    }
+    name_orgs: Set[Tuple[str, str]] = set()
+    for item in raw.get("name_orgs") or []:
+        if not isinstance(item, dict):
+            continue
+        name = _norm_person(item.get("name") or "")
+        org = _normalize_org(str(item.get("org") or ""))
+        if name and org:
+            name_orgs.add((name, org))
+
+    parsed = {
+        "names": names,
+        "emails": emails,
+        "candidate_ids": candidate_ids,
+        "name_orgs": name_orgs,
+    }
+    _blacklist_cache = parsed
+    _blacklist_mtime = mtime
+    return parsed
+
+
+def blacklist_hit_reason(candidate: ReviewerCandidate) -> str:
+    """命中黑名单时返回原因标签，否则空串。"""
+    bl = load_stage1_blacklist()
+    name = _norm_person(candidate.name)
+    if name and name in bl["names"]:
+        return f"blacklist:name:{candidate.name}"
+    email = _norm_person(candidate.email)
+    if email and email in bl["emails"]:
+        return f"blacklist:email:{candidate.email}"
+    cid = str(candidate.id or "").strip()
+    if cid and cid in bl["candidate_ids"]:
+        return f"blacklist:id:{cid}"
+    org = _normalize_org(candidate.org)
+    if name and org and (name, org) in bl["name_orgs"]:
+        return f"blacklist:name_org:{candidate.name}|{candidate.org}"
+    return ""
+
+
+def is_blacklisted_candidate(candidate: ReviewerCandidate) -> bool:
+    return bool(blacklist_hit_reason(candidate))
+
+
+# 命中机构名、学科、研究方向、简历等任一字段即视为敏感（子串匹配）
+_SENSITIVE_MARKERS: Tuple[str, ...] = (
+    "解放军",
+    "人民解放军",
+    "陆军",
+    "海军",
+    "空军",
+    "火箭军",
+    "武警",
+    "军事",
+    "军工",
+    "军械",
+    "军区",
+    "战区",
+    "作战",
+    "战场",
+    "战法",
+    "武器",
+    "兵器",
+    "导弹",
+    "弹药",
+    "装甲兵",
+    "国防大学",
+    "国防科技大学",
+    "国防科大",
+    "国防科技",
+    "军事科学",
+    "军事医学",
+    "军医大学",
+    "装备学院",
+    "指挥学院",
+    "装甲兵学院",
+    "无人装备",
+    "特种作战",
+    "火力打击",
+    "侦察监视",
+    "涉密",
+    "保密资格",
+    "核潜艇",
+    "战斗机",
+    "轰炸机",
+    "武装警察",
+    "military",
+    "warfare",
+    "weapon",
+    "missile",
+)
 
 # 分层计分
 _EXACT_SCORE = 1.0
@@ -56,6 +219,55 @@ def filter_coi(
     if not author_org.strip():
         return list(candidates)
     return [c for c in candidates if not is_coi_conflict(c.org, author_org)]
+
+
+def _candidate_sensitive_text(candidate: ReviewerCandidate) -> str:
+    parts = [
+        candidate.org,
+        candidate.subject,
+        candidate.position,
+        candidate.resume,
+        " ".join(candidate.research_keywords or []),
+    ]
+    return " ".join(str(p) for p in parts if p).lower()
+
+
+def is_sensitive_candidate(candidate: ReviewerCandidate) -> bool:
+    """黑名单或军事/国防等敏感画像：命中则判定为敏感，阶段一入选时剔除。"""
+    if is_blacklisted_candidate(candidate):
+        return True
+    if not _SENSITIVE_FILTER_ENABLED:
+        return False
+    text = _candidate_sensitive_text(candidate)
+    if not text.strip():
+        return False
+    return any(marker.lower() in text for marker in _SENSITIVE_MARKERS)
+
+
+def sensitive_hit_marker(candidate: ReviewerCandidate) -> str:
+    """返回命中的第一个敏感/黑名单标记（调试/展示用）。"""
+    bl_reason = blacklist_hit_reason(candidate)
+    if bl_reason:
+        return bl_reason
+    text = _candidate_sensitive_text(candidate)
+    for marker in _SENSITIVE_MARKERS:
+        if marker.lower() in text:
+            return marker
+    return ""
+
+
+def filter_sensitive(
+    candidates: Sequence[ReviewerCandidate],
+) -> Tuple[List[ReviewerCandidate], List[ReviewerCandidate]]:
+    """拆成（非敏感, 敏感）两份，保持原顺序。"""
+    kept: List[ReviewerCandidate] = []
+    dropped: List[ReviewerCandidate] = []
+    for candidate in candidates:
+        if is_sensitive_candidate(candidate):
+            dropped.append(candidate)
+        else:
+            kept.append(candidate)
+    return kept, dropped
 
 
 def _expand_tokens(tokens: Iterable[str]) -> set[str]:
@@ -226,21 +438,49 @@ def select_highest_overlap(
     paper_keywords: Sequence[str],
     paper_title: str,
 ) -> Tuple[List[ReviewerCandidate], List[ReviewerCandidate], Dict[str, Any]]:
-    """按重合度排序，overlap ≥ 阈值入选；超过上限则取综合排名前 N。"""
+    """按重合度排序，overlap ≥ 阈值入选；超过上限则取综合排名前 N。
+
+    入选时剔除敏感候选人，并从后续达标候选人中回补，尽量凑满上限。
+    """
     all_ranked = rank_candidates(candidates, paper_keywords, paper_title)
+    empty_meta = {
+        "min_overlap": STAGE1_MIN_OVERLAP,
+        "max_selected": STAGE1_MAX_SELECTED,
+        "max_overlap": 0.0,
+        "capped": False,
+        "passed_min_overlap_count": 0,
+        "sensitive_filtered_count": 0,
+        "sensitive_backfilled_count": 0,
+        "sensitive_names": [],
+    }
     if not all_ranked:
-        return [], [], {
-            "min_overlap": STAGE1_MIN_OVERLAP,
-            "max_selected": STAGE1_MAX_SELECTED,
-            "max_overlap": 0.0,
-            "capped": False,
-            "passed_min_overlap_count": 0,
-        }
+        return [], [], empty_meta
 
     max_overlap = max(c.overlap_score for c in all_ranked)
     passed = [c for c in all_ranked if c.overlap_score >= STAGE1_MIN_OVERLAP]
-    capped = len(passed) > STAGE1_MAX_SELECTED
-    selected = all_ranked[:STAGE1_MAX_SELECTED] if capped else passed
+
+    # 未做敏感过滤时本会入选的窗口长度，用于统计「向后回补」人数
+    target_n = min(STAGE1_MAX_SELECTED, len(passed))
+
+    selected: List[ReviewerCandidate] = []
+    sensitive_dropped: List[ReviewerCandidate] = []
+    for candidate in passed:
+        if len(selected) >= STAGE1_MAX_SELECTED:
+            break
+        if is_sensitive_candidate(candidate):
+            sensitive_dropped.append(candidate)
+            continue
+        selected.append(candidate)
+
+    selected_keys = {(c.name, c.org) for c in selected}
+    # 回补 = 入选者中落在原 Top-N 窗口之外的人数
+    backfilled = sum(
+        1
+        for idx, candidate in enumerate(passed)
+        if idx >= target_n and (candidate.name, candidate.org) in selected_keys
+    )
+    non_sensitive_passed = sum(1 for c in passed if not is_sensitive_candidate(c))
+    capped = non_sensitive_passed > STAGE1_MAX_SELECTED
 
     return all_ranked, selected, {
         "min_overlap": STAGE1_MIN_OVERLAP,
@@ -248,4 +488,7 @@ def select_highest_overlap(
         "max_overlap": max_overlap,
         "capped": capped,
         "passed_min_overlap_count": len(passed),
+        "sensitive_filtered_count": len(sensitive_dropped),
+        "sensitive_backfilled_count": backfilled,
+        "sensitive_names": [c.name for c in sensitive_dropped[:10]],
     }

@@ -99,6 +99,8 @@ def _build_stage1_thinking(
     max_selected = stage1_meta.get("max_selected", 25)
     passed_count = stage1_meta.get("passed_min_overlap_count", len(selected_candidates))
     capped = stage1_meta.get("capped", False)
+    sensitive_count = int(stage1_meta.get("sensitive_filtered_count") or 0)
+    backfilled_count = int(stage1_meta.get("sensitive_backfilled_count") or 0)
 
     lines = [
         f"调用 get_recommend_reviewers，关键词：{paper.keywords}，返回 {len(all_candidates)} 位候选人。",
@@ -113,8 +115,15 @@ def _build_stage1_thinking(
     cap_note = f"，超过上限 {max_selected} 人，按综合分截取 Top {max_selected}" if capped else ""
     lines.append(
         f"对 {len(all_ranked)} 位候选人完成关键词重合度 + H 指数加权排序；"
-        f"重合度 ≥ {min_overlap:.2f} 共 {passed_count} 人{cap_note}，"
-        f"最终 {len(selected_candidates)} 人进入阶段二（最高重合度 {max_overlap:.2f}）。"
+        f"重合度 ≥ {min_overlap:.2f} 共 {passed_count} 人{cap_note}。"
+    )
+    if sensitive_count:
+        backfill_note = f"，并向后回补 {backfilled_count} 人" if backfilled_count else ""
+        lines.append(
+            f"敏感/黑名单过滤：剔除 {sensitive_count} 人{backfill_note}。"
+        )
+    lines.append(
+        f"最终 {len(selected_candidates)} 人进入后续阶段（最高重合度 {max_overlap:.2f}）。"
     )
 
     selected_keys = {(c.name, c.org) for c in selected_candidates}
@@ -129,6 +138,8 @@ def _build_stage1_thinking(
         "total_from_api": len(all_candidates),
         "after_coi": len(after_coi),
         "coi_filtered_count": coi_count,
+        "sensitive_filtered_count": sensitive_count,
+        "sensitive_backfilled_count": backfilled_count,
         "ranked_count": len(all_ranked),
         "max_overlap_score": max_overlap,
         "min_overlap_threshold": min_overlap,

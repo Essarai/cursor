@@ -843,6 +843,11 @@ button:disabled {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+.stage-card[data-stage="stage3"].active {
+  border-color: #a8dab5;
+  box-shadow: inset 3px 0 0 var(--success);
+}
+
 .stage-card.done {
   opacity: 1;
 }
@@ -857,29 +862,7 @@ button:disabled {
 }
 
 .stage-badge {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  display: grid;
-  place-items: center;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
-  background: var(--accent);
-  flex-shrink: 0;
-}
-
-.stage-card[data-stage="stage2"] .stage-badge {
-  background: #00897b;
-}
-
-.stage-card[data-stage="stage3"] .stage-badge {
-  background: #7b1fa2;
-}
-
-.stage-card[data-stage="result"] .stage-badge {
-  background: var(--success);
+  display: none;
 }
 
 .stage-head h3 {
@@ -1466,18 +1449,247 @@ button:disabled {
   font-weight: 600;
 }
 
-.thinking-stream {
-  max-height: 280px;
-  overflow: auto;
-  padding: 10px 12px;
-  background: #202124;
-  color: #e8eaed;
-  border-radius: var(--radius-sm);
-  font-family: var(--mono);
+.ai-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bot-thinking {
+  border-radius: 10px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.bot-thinking-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 2px 8px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.bot-thinking-toggle:hover {
+  color: var(--ink);
+}
+
+.bot-thinking-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.bot-thinking-elapsed {
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.bot-thinking-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+.bot-thinking.is-streaming .bot-thinking-dot {
+  animation: bot-pulse 1.1s ease-in-out infinite;
+}
+
+.bot-thinking-label {
+  color: var(--muted);
   font-size: 12px;
-  line-height: 1.6;
-  white-space: pre-wrap;
+  font-weight: 500;
+}
+
+.bot-thinking-body {
+  padding: 0 0 4px;
+  border-left: 2px solid #a8dab5;
+  margin-left: 4px;
+  padding-left: 14px;
+}
+
+.bot-thinking.collapsed .bot-thinking-body {
+  display: none;
+}
+
+.bot-md {
+  max-height: 420px;
+  overflow: auto;
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 13.5px;
+  line-height: 1.75;
   word-break: break-word;
+}
+
+.bot-md:empty::before {
+  content: "等待模型开始思考…";
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.bot-md > *:first-child {
+  margin-top: 0;
+}
+
+.bot-md > *:last-child {
+  margin-bottom: 0;
+}
+
+.bot-md p {
+  margin: 0 0 0.75em;
+}
+
+.bot-md h1,
+.bot-md h2,
+.bot-md h3,
+.bot-md h4 {
+  margin: 1em 0 0.45em;
+  color: var(--ink);
+  font-family: var(--font);
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.bot-md h1 {
+  font-size: 1.15em;
+}
+
+.bot-md h2 {
+  font-size: 1.08em;
+}
+
+.bot-md h3,
+.bot-md h4 {
+  font-size: 1em;
+}
+
+.bot-md ul,
+.bot-md ol {
+  margin: 0 0 0.85em;
+  padding-left: 1.25em;
+}
+
+.bot-md li {
+  margin: 0.2em 0;
+}
+
+.bot-md li + li {
+  margin-top: 0.28em;
+}
+
+.bot-md strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.bot-md em {
+  font-style: italic;
+}
+
+.bot-md code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.bot-md pre {
+  margin: 0 0 0.85em;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.bot-md pre code {
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.bot-md blockquote {
+  margin: 0 0 0.85em;
+  padding: 0.15em 0 0.15em 0.9em;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+
+.bot-md table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.85em;
+  font-size: 12.5px;
+}
+
+.bot-md th,
+.bot-md td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.bot-md th {
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.bot-md hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1em 0;
+}
+
+.bot-md a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.bot-md a:hover {
+  text-decoration: underline;
+}
+
+@keyframes bot-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.ai-result-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-result-heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.02em;
 }
 
 .reviewer-grid {

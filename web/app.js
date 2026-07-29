@@ -49,7 +49,6 @@ const refinedKeywordsReasoning = document.getElementById("refinedKeywordsReasoni
 const stage1Body = document.getElementById("stage1Body");
 const stage2Body = document.getElementById("stage2Body");
 const stage3Body = document.getElementById("stage3Body");
-const resultBody = document.getElementById("resultBody");
 const pubsModal = document.getElementById("pubsModal");
 const pubsModalTitle = document.getElementById("pubsModalTitle");
 const pubsModalSubtitle = document.getElementById("pubsModalSubtitle");
@@ -59,7 +58,6 @@ const pubsModalClose = document.getElementById("pubsModalClose");
 const stage1State = document.getElementById("stage1State");
 const stage2State = document.getElementById("stage2State");
 const stage3State = document.getElementById("stage3State");
-const resultState = document.getElementById("resultState");
 
 let abortController = null;
 let pendingPayload = null;
@@ -189,6 +187,7 @@ function renderStage1Empty(statusText = "正在召回候选人…") {
       <div class="stats-row stats-row-inline">
         <span class="stat-chip">召回 -</span>
         <span class="stat-chip">利益冲突 -</span>
+        <span class="stat-chip">敏感 -</span>
         <span class="stat-chip">入选 -</span>
       </div>
       <input
@@ -496,6 +495,7 @@ function renderStage1(thinking) {
       <div class="stats-row stats-row-inline">
         <span class="stat-chip">召回 ${thinking.total_from_api ?? 0}</span>
         <span class="stat-chip">利益冲突 ${thinking.coi_filtered_count ?? 0}</span>
+        <span class="stat-chip">敏感 ${thinking.sensitive_filtered_count ?? 0}</span>
         <span class="stat-chip">入选 ${selectedCount}</span>
       </div>
       <input
@@ -571,23 +571,152 @@ function renderStage2Summary(thinking) {
   `;
 }
 
-function ensureStage3Stream() {
-  if (!document.getElementById("stage3Stream")) {
-    stage3Body.innerHTML = `<div id="stage3Stream" class="thinking-stream"></div>`;
+let stage3ThinkingRaw = "";
+/** 用户手动收起思考过程时为 true；流式更新不得再强制展开 */
+let botThinkingUserCollapsed = false;
+let botThinkingStartedAt = 0;
+let botThinkingElapsedSec = 0;
+/** @type {number | null} */
+let botThinkingTimerId = null;
+
+function ensureAiRecommendPanel() {
+  if (document.getElementById("aiThread")) return;
+  stage3ThinkingRaw = "";
+  botThinkingUserCollapsed = false;
+  stage3Body.innerHTML = `
+    <div class="ai-thread" id="aiThread">
+      <section class="bot-thinking is-streaming" id="botThinking">
+        <button type="button" class="bot-thinking-toggle" id="botThinkingToggle" aria-expanded="true">
+          <span class="bot-thinking-title">
+            <span class="bot-thinking-dot" aria-hidden="true"></span>
+            <span id="botThinkingStatus">正在思考</span>
+            <span class="bot-thinking-elapsed" id="botThinkingElapsed"></span>
+          </span>
+          <span class="bot-thinking-label" id="botThinkingToggleLabel">收起</span>
+        </button>
+        <div class="bot-thinking-body">
+          <div class="bot-md" id="botThinkingText"></div>
+        </div>
+      </section>
+      <section class="ai-result-section" id="aiResultSection">
+        <p class="placeholder" id="aiResultPlaceholder">推荐结果将在思考完成后展示…</p>
+        <div class="hidden" id="aiResultBody"></div>
+      </section>
+    </div>
+  `;
+}
+
+function updateBotThinkingElapsedLabel() {
+  const el = document.getElementById("botThinkingElapsed");
+  if (!el) return;
+  el.textContent = botThinkingElapsedSec > 0 ? `· ${botThinkingElapsedSec} 秒` : "";
+}
+
+function stopBotThinkingTimer({ keepElapsed = true } = {}) {
+  if (botThinkingTimerId != null) {
+    window.clearInterval(botThinkingTimerId);
+    botThinkingTimerId = null;
+  }
+  if (botThinkingStartedAt) {
+    botThinkingElapsedSec = Math.max(
+      1,
+      Math.floor((Date.now() - botThinkingStartedAt) / 1000)
+    );
+  }
+  if (!keepElapsed) {
+    botThinkingStartedAt = 0;
+    botThinkingElapsedSec = 0;
+  }
+  updateBotThinkingElapsedLabel();
+}
+
+function startBotThinkingTimer() {
+  stopBotThinkingTimer({ keepElapsed: false });
+  botThinkingStartedAt = Date.now();
+  botThinkingElapsedSec = 0;
+  updateBotThinkingElapsedLabel();
+  botThinkingTimerId = window.setInterval(() => {
+    botThinkingElapsedSec = Math.max(
+      0,
+      Math.floor((Date.now() - botThinkingStartedAt) / 1000)
+    );
+    updateBotThinkingElapsedLabel();
+  }, 200);
+}
+
+function setBotThinkingCollapsed(collapsed, { fromUser = false } = {}) {
+  const panel = document.getElementById("botThinking");
+  const toggle = document.getElementById("botThinkingToggle");
+  const label = document.getElementById("botThinkingToggleLabel");
+  if (!panel) return;
+  panel.classList.toggle("collapsed", collapsed);
+  if (toggle) toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  if (label) label.textContent = collapsed ? "展开" : "收起";
+  if (fromUser) botThinkingUserCollapsed = collapsed;
+}
+
+function setBotThinkingStreaming(streaming) {
+  const panel = document.getElementById("botThinking");
+  const status = document.getElementById("botThinkingStatus");
+  if (!panel) return;
+  panel.classList.toggle("is-streaming", streaming);
+  if (status) status.textContent = streaming ? "正在思考" : "思考过程";
+  if (streaming) {
+    if (botThinkingTimerId == null) startBotThinkingTimer();
+  } else {
+    stopBotThinkingTimer({ keepElapsed: true });
   }
 }
 
+function renderThinkingMarkdown() {
+  const el = document.getElementById("botThinkingText");
+  if (!el) return;
+  const raw = stage3ThinkingRaw;
+  if (!raw.trim()) {
+    el.innerHTML = "";
+    return;
+  }
+  let html = "";
+  try {
+    if (window.marked?.parse) {
+      html = window.marked.parse(raw, { breaks: true, gfm: true });
+    } else {
+      html = `<p>${escapeHtml(raw).replace(/\n/g, "<br>")}</p>`;
+    }
+  } catch {
+    html = `<p>${escapeHtml(raw).replace(/\n/g, "<br>")}</p>`;
+  }
+  if (window.DOMPurify?.sanitize) {
+    html = window.DOMPurify.sanitize(html, {
+      USE_PROFILES: { html: true },
+    });
+  }
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+  el.innerHTML = html;
+  if (nearBottom && !botThinkingUserCollapsed) el.scrollTop = el.scrollHeight;
+}
+
 function appendStage3Text(text) {
-  ensureStage3Stream();
-  const stream = document.getElementById("stage3Stream");
-  stream.textContent += text;
-  stream.scrollTop = stream.scrollHeight;
+  ensureAiRecommendPanel();
+  setBotThinkingStreaming(true);
+  // 尊重用户折叠：流式过程中不强制展开
+  stage3ThinkingRaw += text;
+  renderThinkingMarkdown();
+}
+
+function clearStage3Thinking() {
+  stage3ThinkingRaw = "";
+  botThinkingUserCollapsed = false;
+  stopBotThinkingTimer({ keepElapsed: false });
+  const el = document.getElementById("botThinkingText");
+  if (el) el.innerHTML = "";
+  setBotThinkingCollapsed(false);
 }
 
 function renderStage3Summary(thinking) {
   setStageCard("stage3", "active");
   setStageLabel(stage3State, "进行中");
-  ensureStage3Stream();
+  ensureAiRecommendPanel();
   if (thinking?.summary) {
     appendStage3Text(`${thinking.summary}\n\n`);
   }
@@ -623,87 +752,110 @@ function renderResearchField(item) {
   return "-";
 }
 
+function renderReviewerCardsHtml(reviewers) {
+  return reviewers
+    .map((item, index) => {
+      const canViewPubs = Boolean(item.name?.trim() && String(item.org || "").trim());
+      return `
+        <article class="reviewer-card">
+          <div class="reviewer-head">
+            <div>
+              <h4 class="reviewer-name-row">
+                <span>${escapeHtml(item.name)}</span>
+                ${
+                  String(item.position || "").trim()
+                    ? `<span class="author-position" title="${escapeHtml(item.position)}">${escapeHtml(item.position)}</span>`
+                    : ""
+                }
+              </h4>
+              <p class="reviewer-org">${escapeHtml(item.org || "-")}</p>
+            </div>
+            <div class="reviewer-actions">
+              <button
+                type="button"
+                class="copy-btn result-pubs-btn"
+                data-index="${index}"
+                ${canViewPubs ? "" : "disabled"}
+              >查看发文</button>
+              <button
+                type="button"
+                class="copy-btn result-copy-email-btn"
+                data-index="${index}"
+                ${item.email?.trim() ? "" : "disabled"}
+              >复制邮箱</button>
+              <button
+                type="button"
+                class="copy-all-btn result-copy-all-btn"
+                data-index="${index}"
+                title="复制姓名、职称、邮箱、单位、研究方向"
+              >复制全部信息</button>
+            </div>
+          </div>
+          <dl class="reviewer-meta-grid">
+            <div>
+              <dt>学科</dt>
+              <dd>${escapeHtml(formatSubjectText(item.subject))}</dd>
+            </div>
+            <div>
+              <dt>研究领域</dt>
+              <dd>${escapeHtml(renderResearchField(item))}</dd>
+            </div>
+            <div>
+              <dt>H 指数</dt>
+              <dd>${item.hindex ?? "-"}</dd>
+            </div>
+            <div>
+              <dt>近 2 年发文</dt>
+              <dd>${item.pubs_last_2_years ?? 0} 篇</dd>
+            </div>
+          </dl>
+          <div class="reviewer-section">
+            <p class="reviewer-section-title">最近发文</p>
+            ${renderRecentPapers(item.recent_papers)}
+          </div>
+          ${
+            item.matched_paper?.trim()
+              ? `<p class="reviewer-paper">匹配论文：${escapeHtml(item.matched_paper)}</p>`
+              : ""
+          }
+          <p class="reviewer-reason">${escapeHtml(item.reason || "")}</p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderResult(reviewers) {
   lastReviewers = reviewers;
   setStageCard("stage3", "done");
-  setStageLabel(stage3State, "已完成");
-  setStageCard("result", "done");
-  setStageLabel(resultState, `${reviewers.length} 位`);
+  setStageLabel(stage3State, `${reviewers.length} 位`);
+  ensureAiRecommendPanel();
+  setBotThinkingStreaming(false);
+  const thinkingPanel = document.getElementById("botThinking");
+  if (thinkingPanel) {
+    if (!stage3ThinkingRaw.trim()) {
+      thinkingPanel.classList.add("hidden");
+    } else {
+      thinkingPanel.classList.remove("hidden");
+      setBotThinkingCollapsed(true);
+    }
+  }
 
-  resultBody.innerHTML = `
-    <div class="reviewer-grid">
-      ${reviewers
-        .map((item, index) => {
-          const canViewPubs = Boolean(item.name?.trim() && String(item.org || "").trim());
-          return `
-            <article class="reviewer-card">
-              <div class="reviewer-head">
-                <div>
-                  <h4 class="reviewer-name-row">
-                    <span>${escapeHtml(item.name)}</span>
-                    ${
-                      String(item.position || "").trim()
-                        ? `<span class="author-position" title="${escapeHtml(item.position)}">${escapeHtml(item.position)}</span>`
-                        : ""
-                    }
-                  </h4>
-                  <p class="reviewer-org">${escapeHtml(item.org || "-")}</p>
-                </div>
-                <div class="reviewer-actions">
-                  <button
-                    type="button"
-                    class="copy-btn result-pubs-btn"
-                    data-index="${index}"
-                    ${canViewPubs ? "" : "disabled"}
-                  >查看发文</button>
-                  <button
-                    type="button"
-                    class="copy-btn result-copy-email-btn"
-                    data-index="${index}"
-                    ${item.email?.trim() ? "" : "disabled"}
-                  >复制邮箱</button>
-                  <button
-                    type="button"
-                    class="copy-all-btn result-copy-all-btn"
-                    data-index="${index}"
-                    title="复制姓名、职称、邮箱、单位、研究方向"
-                  >复制全部信息</button>
-                </div>
-              </div>
-              <dl class="reviewer-meta-grid">
-                <div>
-                  <dt>学科</dt>
-                  <dd>${escapeHtml(formatSubjectText(item.subject))}</dd>
-                </div>
-                <div>
-                  <dt>研究领域</dt>
-                  <dd>${escapeHtml(renderResearchField(item))}</dd>
-                </div>
-                <div>
-                  <dt>H 指数</dt>
-                  <dd>${item.hindex ?? "-"}</dd>
-                </div>
-                <div>
-                  <dt>近 2 年发文</dt>
-                  <dd>${item.pubs_last_2_years ?? 0} 篇</dd>
-                </div>
-              </dl>
-              <div class="reviewer-section">
-                <p class="reviewer-section-title">最近发文</p>
-                ${renderRecentPapers(item.recent_papers)}
-              </div>
-              ${
-                item.matched_paper?.trim()
-                  ? `<p class="reviewer-paper">匹配论文：${escapeHtml(item.matched_paper)}</p>`
-                  : ""
-              }
-              <p class="reviewer-reason">${escapeHtml(item.reason || "")}</p>
-            </article>
-          `;
-        })
-        .join("")}
-    </div>
-  `;
+  const placeholder = document.getElementById("aiResultPlaceholder");
+  const resultBody = document.getElementById("aiResultBody");
+  if (placeholder) {
+    placeholder.classList.add("hidden");
+    placeholder.textContent = "";
+  }
+  if (resultBody) {
+    resultBody.classList.remove("hidden");
+    resultBody.innerHTML = `
+      <h4 class="ai-result-heading">推荐审稿人 · ${reviewers.length} 位</h4>
+      <div class="reviewer-grid">
+        ${renderReviewerCardsHtml(reviewers)}
+      </div>
+    `;
+  }
 }
 
 async function copyText(text, button, { successLabel = "已复制", toastMessage = "" } = {}) {
@@ -775,23 +927,30 @@ function formatExpertCopyText(expert) {
 
 function renderAiError(message) {
   const text = formatAiErrorMessage(message);
-  setStageCard("result", "done");
-  setStageLabel(resultState, "失败");
   setStageCard("stage3", "done");
   setStageLabel(stage3State, "失败");
-  resultBody.innerHTML = `<div class="error-box">${escapeHtml(text)}</div>`;
-  applyStageFilter("result");
+  ensureAiRecommendPanel();
+  setBotThinkingStreaming(false);
+  const placeholder = document.getElementById("aiResultPlaceholder");
+  const resultBody = document.getElementById("aiResultBody");
+  if (placeholder) placeholder.classList.add("hidden");
+  if (resultBody) {
+    resultBody.classList.remove("hidden");
+    resultBody.innerHTML = `<div class="error-box">${escapeHtml(text)}</div>`;
+  } else {
+    stage3Body.innerHTML = `<div class="error-box">${escapeHtml(text)}</div>`;
+  }
 }
 
 function formatAiErrorMessage(message) {
   const raw = String(message || "未知错误");
   if (/1026|input_new_sensitive|new_sensitive|敏感/i.test(raw)) {
     return (
-      "AI 精荐因内容安全审核未通过（候选中可能含敏感机构/学科/论文信息）。" +
-      "「候选专家」结果仍可用，可直接从该列表选用；也可调整关键词后重试 AI 精荐。"
+      "AI 推荐因内容安全审核未通过（候选中可能含敏感机构/学科/论文信息）。" +
+      "「候选专家」结果仍可用，可直接从该列表选用；也可调整关键词后重试 AI 推荐。"
     );
   }
-  return `AI 精荐失败：${raw}。「候选专家」结果仍可用。`;
+  return `AI 推荐失败：${raw}。「候选专家」结果仍可用。`;
 }
 
 function renderStage1Error(message) {
@@ -817,19 +976,37 @@ function resetUI() {
   lastReviewers = [];
   lastStage1Experts = [];
   stage2Progress.length = 0;
-  ["stage1", "stage2", "stage3", "result"].forEach((stage) => {
+  stage3ThinkingRaw = "";
+  botThinkingUserCollapsed = false;
+  stopBotThinkingTimer({ keepElapsed: false });
+  ["stage1", "stage2", "stage3"].forEach((stage) => {
     setStageCard(stage, stage === "stage1" ? "active" : "idle");
   });
   setStageLabel(stage1State, "进行中");
   setStageLabel(stage2State, "等待中");
   setStageLabel(stage3State, "等待中");
-  setStageLabel(resultState, "等待中");
 
   renderStage1Empty("正在召回候选人…");
   stage2Body.innerHTML = `<p class="placeholder">等待候选专家完成…</p>`;
   stage3Body.innerHTML = `<p class="placeholder">等待背景补全完成…</p>`;
-  resultBody.innerHTML = `<p class="placeholder">精荐完成后展示…</p>`;
   applyStageFilter("stage1");
+}
+
+function showAiPanelMessage(message, { asError = true } = {}) {
+  ensureAiRecommendPanel();
+  setBotThinkingStreaming(false);
+  const placeholder = document.getElementById("aiResultPlaceholder");
+  const resultBody = document.getElementById("aiResultBody");
+  if (placeholder) placeholder.classList.add("hidden");
+  const html = asError
+    ? `<div class="error-box">${escapeHtml(message)}</div>`
+    : `<p class="placeholder">${escapeHtml(message)}</p>`;
+  if (resultBody) {
+    resultBody.classList.remove("hidden");
+    resultBody.innerHTML = html;
+  } else {
+    stage3Body.innerHTML = html;
+  }
 }
 
 /** 换下一篇稿：清空论文字段与结果区，默认保留机构。 */
@@ -860,17 +1037,18 @@ function startNewPaper({ keepAuthorOrg = false } = {}) {
   lastReviewers = [];
   lastStage1Experts = [];
   stage2Progress.length = 0;
-  ["stage1", "stage2", "stage3", "result"].forEach((stage) => {
+  stage3ThinkingRaw = "";
+  botThinkingUserCollapsed = false;
+  stopBotThinkingTimer({ keepElapsed: false });
+  ["stage1", "stage2", "stage3"].forEach((stage) => {
     setStageCard(stage, "idle");
   });
   setStageLabel(stage1State, "等待中");
   setStageLabel(stage2State, "等待中");
   setStageLabel(stage3State, "等待中");
-  setStageLabel(resultState, "等待中");
   stage1Body.innerHTML = `<p class="placeholder">提交后开始召回…</p>`;
   stage2Body.innerHTML = `<p class="placeholder">等待候选匹配…</p>`;
   stage3Body.innerHTML = `<p class="placeholder">等待背景补全…</p>`;
-  resultBody.innerHTML = `<p class="placeholder">精荐完成后展示…</p>`;
   applyStageFilter("stage1");
 
   setFormBusy(false);
@@ -882,17 +1060,21 @@ function startNewPaper({ keepAuthorOrg = false } = {}) {
 }
 
 function applyStageFilter(filter) {
-  const allowed = new Set(["stage1", "result"]);
-  const next = allowed.has(filter) ? filter : "stage1";
+  const allowed = new Set(["stage1", "stage3"]);
+  // 兼容旧 tab：result / stage2 均并入 AI推荐可见流程
+  let mapped = filter;
+  if (filter === "result" || filter === "stage2") mapped = "stage3";
+  const next = allowed.has(mapped) ? mapped : "stage1";
   activeFilter = next;
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.stage === next);
   });
   document.querySelectorAll(".stage-card").forEach((card) => {
     const stage = card.dataset.stage;
-    // 阶段二/三仅后台更新，界面不展示
-    const visible = stage === next;
+    // 背景补全始终隐藏，仅后台更新
+    const visible = stage === next && stage !== "stage2";
     card.classList.toggle("hidden", !visible);
+    card.setAttribute("aria-hidden", visible ? "false" : "true");
   });
 }
 
@@ -923,11 +1105,17 @@ function handleEvent(event) {
         renderStage1(thinking);
         setConnectionStatus("error", "入选不足，请调整关键词后重试");
         if (formMode === "direct") {
-          resultBody.innerHTML = `<div class="error-box">CSCD 已召回 ${recalled} 人，但关键词重合度 ≥ ${threshold.toFixed(2)} 仅入选 ${passed} 人（需至少 ${STAGE1_MIN_SELECTED} 人）。请修改检索关键词后重试。</div>`;
+          showAiPanelMessage(
+            `CSCD 已召回 ${recalled} 人，但关键词重合度 ≥ ${threshold.toFixed(2)} 仅入选 ${passed} 人（需至少 ${STAGE1_MIN_SELECTED} 人）。请修改检索关键词后重试。`
+          );
         } else if (autoRefineCount > 0) {
-          resultBody.innerHTML = `<div class="error-box">已召回 ${recalled} 人，重合度筛选后仅入选 ${passed} 人；已自动重新提炼 ${autoRefineCount} 次仍未达标，请调整标题、摘要或原始关键词后重试。</div>`;
+          showAiPanelMessage(
+            `已召回 ${recalled} 人，重合度筛选后仅入选 ${passed} 人；已自动重新提炼 ${autoRefineCount} 次仍未达标，请调整标题、摘要或原始关键词后重试。`
+          );
         } else {
-          resultBody.innerHTML = `<div class="error-box">已召回 ${recalled} 人，重合度筛选后仅入选 ${passed} 人（需至少 ${STAGE1_MIN_SELECTED} 人）。请调整标题、摘要与关键词后重试。</div>`;
+          showAiPanelMessage(
+            `已召回 ${recalled} 人，重合度筛选后仅入选 ${passed} 人（需至少 ${STAGE1_MIN_SELECTED} 人）。请调整标题、摘要与关键词后重试。`
+          );
         }
         setStageCard("stage1", "done");
         setStageLabel(stage1State, "未达标");
@@ -966,10 +1154,12 @@ function handleEvent(event) {
         `;
       } else if (thinking.summary) {
         renderStage2Summary(thinking);
-        setConnectionStatus("running", "正在语义精筛…");
+        setConnectionStatus("running", "正在 AI 推荐…");
         setStageCard("stage3", "active");
         setStageLabel(stage3State, "进行中");
-        stage3Body.innerHTML = `<div id="stage3Stream" class="thinking-stream"></div>`;
+        ensureAiRecommendPanel();
+        clearStage3Thinking();
+        setBotThinkingStreaming(true);
       }
       break;
     }
@@ -977,23 +1167,22 @@ function handleEvent(event) {
     case "stage3_thinking":
       if (event.thinking?.summary) {
         renderStage3Summary(event.thinking);
-        setConnectionStatus("running", "正在语义精筛…");
+        setConnectionStatus("running", "正在 AI 推荐…");
       } else if (event.chunk) {
         appendStage3Text(event.chunk);
-        setConnectionStatus("running", "正在语义精筛…");
+        setConnectionStatus("running", "正在 AI 推荐…");
       }
       break;
 
     case "stage1_done":
       // 候选专家已定稿；后续 AI 成败互不影响
       if (lastStage1Experts.length > 0) {
-        setConnectionStatus("running", "候选专家已就绪，正在 AI 精荐…");
+        setConnectionStatus("running", "候选专家已就绪，正在 AI 推荐…");
       }
       break;
 
     case "stage3_done":
       renderResult(event.reviewers || []);
-      applyStageFilter("result");
       setConnectionStatus("ok", "推荐完成");
       break;
 
@@ -1004,8 +1193,8 @@ function handleEvent(event) {
         setConnectionStatus(
           "ok",
           lastStage1Experts.length > 0
-            ? "候选专家可用；AI 精荐未完成"
-            : "AI 精荐失败"
+            ? "候选专家可用；AI 推荐未完成"
+              : "AI 推荐失败"
         );
       } else {
         setConnectionStatus("error", "候选召回失败");
@@ -1086,7 +1275,7 @@ async function startRecommend(payload) {
       renderError(err.message || String(err), stage);
       setConnectionStatus(
         stage === "ai" ? "ok" : "error",
-        stage === "ai" ? "候选专家可用；AI 精荐未完成" : "运行失败"
+        stage === "ai" ? "候选专家可用；AI 推荐未完成" : "运行失败"
       );
     } else {
       setConnectionStatus("ok", "已停止");
@@ -1222,7 +1411,9 @@ async function retryByReRefineKeywords(payload) {
   const meta = paperMetaForRefine || readFormFields();
   if (!meta?.title?.trim()) {
     setConnectionStatus("error", "入选不足且无法自动提炼（缺少论文标题）");
-    resultBody.innerHTML = `<div class="error-box">阶段一入选不足 ${STAGE1_MIN_SELECTED} 人，但缺少论文标题，无法自动重新提炼。请切换到智能检索或补充标题后重试。</div>`;
+    showAiPanelMessage(
+      `阶段一入选不足 ${STAGE1_MIN_SELECTED} 人，但缺少论文标题，无法自动重新提炼。请切换到智能检索或补充标题后重试。`
+    );
     setFormBusy(false);
     stopBtn.disabled = true;
     return;
@@ -1586,7 +1777,14 @@ stageTabs.addEventListener("click", (e) => {
   applyStageFilter(tab.dataset.stage);
 });
 
-resultBody.addEventListener("click", async (e) => {
+stage3Body.addEventListener("click", async (e) => {
+  if (e.target.closest("#botThinkingToggle")) {
+    const panel = document.getElementById("botThinking");
+    if (!panel) return;
+    setBotThinkingCollapsed(!panel.classList.contains("collapsed"), { fromUser: true });
+    return;
+  }
+
   const pubsBtn = e.target.closest(".result-pubs-btn");
   if (pubsBtn) {
     const index = Number(pubsBtn.dataset.index);
@@ -1691,4 +1889,3 @@ setStageCard("stage1", "idle");
 setStageLabel(stage1State, "等待中");
 stage2Body.innerHTML = `<p class="placeholder">等待候选专家完成…</p>`;
 stage3Body.innerHTML = `<p class="placeholder">等待背景补全完成…</p>`;
-resultBody.innerHTML = `<p class="placeholder">精荐完成后展示…</p>`;
