@@ -773,10 +773,44 @@ function formatExpertCopyText(expert) {
   ].join("\n");
 }
 
-function renderError(message) {
-  const box = `<div class="error-box">${escapeHtml(message)}</div>`;
-  if (!stage1Body.querySelector(".error-box")) stage1Body.innerHTML = box;
-  else if (!resultBody.querySelector(".reviewer-card")) resultBody.innerHTML = box;
+function renderAiError(message) {
+  const text = formatAiErrorMessage(message);
+  setStageCard("result", "done");
+  setStageLabel(resultState, "失败");
+  setStageCard("stage3", "done");
+  setStageLabel(stage3State, "失败");
+  resultBody.innerHTML = `<div class="error-box">${escapeHtml(text)}</div>`;
+  applyStageFilter("result");
+}
+
+function formatAiErrorMessage(message) {
+  const raw = String(message || "未知错误");
+  if (/1026|input_new_sensitive|new_sensitive|敏感/i.test(raw)) {
+    return (
+      "AI 精荐因内容安全审核未通过（候选中可能含敏感机构/学科/论文信息）。" +
+      "「候选专家」结果仍可用，可直接从该列表选用；也可调整关键词后重试 AI 精荐。"
+    );
+  }
+  return `AI 精荐失败：${raw}。「候选专家」结果仍可用。`;
+}
+
+function renderStage1Error(message) {
+  stage1Body.innerHTML = `<div class="error-box">${escapeHtml(message || "未知错误")}</div>`;
+  setStageCard("stage1", "done");
+  setStageLabel(stage1State, "失败");
+}
+
+function renderError(message, stage = "stage1") {
+  if (stage === "ai" || stage === "stage2" || stage === "stage3") {
+    renderAiError(message);
+    return;
+  }
+  // 阶段一已有列表时，迟到错误不应覆盖候选专家
+  if (lastStage1Experts.length > 0) {
+    renderAiError(message);
+    return;
+  }
+  renderStage1Error(message);
 }
 
 function resetUI() {
@@ -950,16 +984,34 @@ function handleEvent(event) {
       }
       break;
 
+    case "stage1_done":
+      // 候选专家已定稿；后续 AI 成败互不影响
+      if (lastStage1Experts.length > 0) {
+        setConnectionStatus("running", "候选专家已就绪，正在 AI 精荐…");
+      }
+      break;
+
     case "stage3_done":
       renderResult(event.reviewers || []);
       applyStageFilter("result");
       setConnectionStatus("ok", "推荐完成");
       break;
 
-    case "error":
-      renderError(event.message || "未知错误");
-      setConnectionStatus("error", "运行失败");
+    case "error": {
+      const errStage = event.stage || (lastStage1Experts.length > 0 ? "ai" : "stage1");
+      renderError(event.message || "未知错误", errStage);
+      if (errStage === "ai" || errStage === "stage2" || errStage === "stage3") {
+        setConnectionStatus(
+          "ok",
+          lastStage1Experts.length > 0
+            ? "候选专家可用；AI 精荐未完成"
+            : "AI 精荐失败"
+        );
+      } else {
+        setConnectionStatus("error", "候选召回失败");
+      }
       break;
+    }
 
     default:
       break;
@@ -1030,8 +1082,12 @@ async function startRecommend(payload) {
     } else if (err.name === "AbortError" && abortReason === "low-selected") {
       // 入选不足且无法再重试，错误信息已在 handleEvent 中展示
     } else if (err.name !== "AbortError") {
-      renderError(err.message || String(err));
-      setConnectionStatus("error", "运行失败");
+      const stage = lastStage1Experts.length > 0 ? "ai" : "stage1";
+      renderError(err.message || String(err), stage);
+      setConnectionStatus(
+        stage === "ai" ? "ok" : "error",
+        stage === "ai" ? "候选专家可用；AI 精荐未完成" : "运行失败"
+      );
     } else {
       setConnectionStatus("ok", "已停止");
     }

@@ -1,9 +1,11 @@
 """审稿人推荐 Agent 主入口。
 
 输出格式：NDJSON 事件流
-- stage1_thinking / stage2_thinking / stage3_thinking：各阶段思考过程
+- stage1_thinking / stage1_done：候选专家（不经 LLM）
+- stage2_thinking / stage3_thinking：背景补全与 AI 精筛
 - stage3_result：阶段三 JSON 结果片段（流式）
 - stage3_done：最终结构化推荐列表
+- error：失败事件；stage=stage1|ai，AI 失败不影响已发出的候选专家
 """
 
 from __future__ import annotations
@@ -50,14 +52,20 @@ def main() -> None:
     )
 
     exit_code = 0
+    stage1_ok = False
     for event in iter_agent_events(paper):
         try:
             sys.stdout.write(json.dumps(event, ensure_ascii=False) + "\n")
             sys.stdout.flush()
         except BrokenPipeError:
             sys.exit(0)
-        if event.get("event") == "error":
-            exit_code = 1
+        name = event.get("event")
+        if name in ("stage1_thinking", "stage1_done"):
+            stage1_ok = True
+        if name == "error":
+            # 仅阶段一失败视为整体失败；AI 精荐失败时候选专家仍可用
+            if event.get("stage") != "ai" or not stage1_ok:
+                exit_code = 1
 
     sys.exit(exit_code)
 
