@@ -17,6 +17,7 @@ from agent.keyword_refine import refine_keywords
 from agent.runner import iter_agent_events
 from agent.types import PaperInput
 from cscd.client import diagnose_cscd
+from server.logging_setup import get_logger
 from server.schemas import (
     AuthorPubsRequest,
     AuthorPubsResponse,
@@ -26,6 +27,8 @@ from server.schemas import (
     RefineKeywordsRequest,
     RefineKeywordsResponse,
 )
+
+logger = get_logger("api")
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "web"
@@ -88,6 +91,13 @@ def cscd_status() -> CscdStatusResponse:
 )
 def refine_paper_keywords(body: RefineKeywordsRequest) -> RefineKeywordsResponse:
     """依据论文标题、摘要与原始关键词提炼检索关键词，供用户确认后使用。"""
+    title = body.title.strip()
+    logger.info(
+        "keywords_refine request title=%r keywords=%r retry=%s",
+        title[:80],
+        (body.keywords or "").strip()[:80] or "-",
+        bool((body.previous_keywords or "").strip()),
+    )
     try:
         result = refine_keywords(
             title=body.title,
@@ -97,7 +107,10 @@ def refine_paper_keywords(body: RefineKeywordsRequest) -> RefineKeywordsResponse
             retry_note=body.retry_note,
         )
     except Exception as exc:  # noqa: BLE001
+        logger.exception("keywords_refine failed title=%r", title[:80])
         raise HTTPException(status_code=502, detail=f"关键词提炼失败：{exc}") from exc
+    refined = result.get("keywords") or []
+    logger.info("keywords_refine ok title=%r result=%s", title[:80], refined)
     return RefineKeywordsResponse(**result)
 
 
@@ -108,6 +121,16 @@ def refine_paper_keywords(body: RefineKeywordsRequest) -> RefineKeywordsResponse
 )
 def author_publication_stats(body: AuthorPubsRequest) -> AuthorPubsResponse:
     """按作者姓名与机构拉发文，并按年聚合一作/通讯/其他。"""
+    author = body.author.strip()
+    institute = body.institute.strip()
+    pub_year = (body.pub_year or "").strip() or "default-20y"
+    logger.info(
+        "author_pubs request author=%r institute=%r pub_year=%s author_id=%s",
+        author,
+        institute,
+        pub_year,
+        (body.author_id or "").strip() or "-",
+    )
     try:
         result = fetch_author_pub_stats(
             author=body.author,
@@ -117,9 +140,35 @@ def author_publication_stats(body: AuthorPubsRequest) -> AuthorPubsResponse:
             keywords=body.keywords,
         )
     except ValueError as exc:
+        logger.warning(
+            "author_pubs rejected author=%r institute=%r detail=%s",
+            author,
+            institute,
+            exc,
+        )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "author_pubs failed author=%r institute=%r",
+            author,
+            institute,
+        )
         raise HTTPException(status_code=502, detail=f"发文查询失败：{exc}") from exc
+
+    totals = result.get("totals") or {}
+    logger.info(
+        "author_pubs ok author=%r institute=%r identity_verified=%s "
+        "total=%s fetched=%s matched=%s first=%s corresponding=%s other=%s",
+        result.get("author"),
+        result.get("institute"),
+        result.get("identity_verified"),
+        result.get("total"),
+        result.get("fetched"),
+        result.get("keyword_matched"),
+        totals.get("first", 0),
+        totals.get("corresponding", 0),
+        totals.get("other", 0),
+    )
     return AuthorPubsResponse(**result)
 
 
@@ -138,9 +187,36 @@ def recommend_reviewers(body: RecommendRequest) -> StreamingResponse:
         author_org=body.author_org,
         extra=extra,
     )
+    logger.info(
+        "recommend start title=%r keywords=%r author_org=%r",
+        paper.title.strip()[:80],
+        paper.keywords.strip()[:120],
+        (paper.author_org or "").strip()[:80] or "-",
+    )
 
     def generate() -> bytes:
         for event in iter_agent_events(paper):
+            if event.get("event") == "error":
+                logger.error(
+                    "recommend error stage=%s title=%r message=%s",
+                    event.get("stage"),
+                    paper.title.strip()[:80],
+                    event.get("message"),
+                )
+            elif event.get("event") == "stage1_done":
+                logger.info(
+                    "recommend stage1_done title=%r selected=%s total_from_api=%s",
+                    paper.title.strip()[:80],
+                    event.get("selected_count"),
+                    event.get("total_from_api"),
+                )
+            elif event.get("event") == "stage3_done":
+                reviewers = event.get("reviewers") or []
+                logger.info(
+                    "recommend stage3_done title=%r reviewers=%s",
+                    paper.title.strip()[:80],
+                    len(reviewers) if isinstance(reviewers, list) else reviewers,
+                )
             line = json.dumps(event, ensure_ascii=False) + "\n"
             yield line.encode("utf-8")
 
