@@ -12,6 +12,8 @@ from json_repair import repair_json
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
 from pydantic import BaseModel, Field
 
 from agent.emit import emit
@@ -47,6 +49,23 @@ def load_system_prompt() -> str:
     return template.replace(PLACEHOLDER, golden)
 
 
+def _resolve_llm_provider() -> str:
+    """返回当前 LLM 提供方：minimax | tokenhub | openai。"""
+    raw = os.getenv("LLM_PROVIDER", "").strip().lower()
+    if raw in {"minimax", "tokenhub", "openai"}:
+        return raw
+    # 未显式指定时：有 TokenHub key 且无 MiniMax key → tokenhub；否则默认 minimax
+    if os.getenv("TOKENHUB_API_KEY", "").strip() and not os.getenv(
+        "MINIMAX_API_KEY", ""
+    ).strip():
+        return "tokenhub"
+    if os.getenv("OPENAI_API_KEY", "").strip() and not os.getenv(
+        "MINIMAX_API_KEY", ""
+    ).strip():
+        return "openai"
+    return "minimax"
+
+
 def _build_llm(
     *,
     streaming: bool = False,
@@ -54,31 +73,55 @@ def _build_llm(
     temperature: float | None = None,
     disable_thinking: bool = False,
 ) -> ChatOpenAI:
-    api_key = (
-        os.getenv("MINIMAX_API_KEY", "").strip()
-        or os.getenv("OPENAI_API_KEY", "").strip()
-    )
-    if not api_key:
-        raise RuntimeError("请设置环境变量 MINIMAX_API_KEY 或 OPENAI_API_KEY")
+    provider = _resolve_llm_provider()
 
-    base_url = (
-        os.getenv("MINIMAX_BASE_URL", "").strip()
-        or os.getenv("OPENAI_BASE_URL", "").strip()
-        or "https://api.minimaxi.com/v1"
-    )
-    model = (
-        os.getenv("MINIMAX_MODEL", "").strip()
-        or os.getenv("LLM_MODEL", "").strip()
-        or "MiniMax-M3"
-    )
+    if provider == "tokenhub":
+        api_key = os.getenv("TOKENHUB_API_KEY", "").strip()
+        base_url = (
+            os.getenv("TOKENHUB_BASE_URL", "").strip()
+            or "https://tokenhub.tencentmaas.com/v1"
+        )
+        model = (
+            os.getenv("TOKENHUB_MODEL", "").strip()
+            or os.getenv("LLM_MODEL", "").strip()
+            or "glm-5.2"
+        )
+        if not api_key:
+            raise RuntimeError("请设置环境变量 TOKENHUB_API_KEY")
+    elif provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        base_url = os.getenv("OPENAI_BASE_URL", "").strip() or None
+        model = os.getenv("LLM_MODEL", "").strip() or "gpt-4o-mini"
+        if not api_key:
+            raise RuntimeError("请设置环境变量 OPENAI_API_KEY")
+    else:
+        api_key = (
+            os.getenv("MINIMAX_API_KEY", "").strip()
+            or os.getenv("OPENAI_API_KEY", "").strip()
+        )
+        base_url = (
+            os.getenv("MINIMAX_BASE_URL", "").strip()
+            or os.getenv("OPENAI_BASE_URL", "").strip()
+            or "https://api.minimaxi.com/v1"
+        )
+        model = (
+            os.getenv("MINIMAX_MODEL", "").strip()
+            or os.getenv("LLM_MODEL", "").strip()
+            or "MiniMax-M3"
+        )
+        if not api_key:
+            raise RuntimeError(
+                "请设置环境变量 MINIMAX_API_KEY、TOKENHUB_API_KEY 或 OPENAI_API_KEY"
+            )
 
     kwargs: Dict[str, Any] = {
         "model": model,
         "api_key": api_key,
-        "base_url": base_url,
         "temperature": 0.2,
         "streaming": streaming,
     }
+    if base_url:
+        kwargs["base_url"] = base_url
     if temperature is not None:
         kwargs["temperature"] = temperature
 
@@ -92,8 +135,8 @@ def _build_llm(
     model_kwargs: Dict[str, Any] = {}
     if not streaming and use_json_mode:
         model_kwargs["response_format"] = {"type": "json_object"}
-    # MiniMax-M3：关闭思考链，显著缩短简单任务延迟
-    if disable_thinking:
+    # MiniMax 专有：关闭思考链，显著缩短简单任务延迟
+    if disable_thinking and provider == "minimax":
         kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
     if model_kwargs:
         kwargs["model_kwargs"] = model_kwargs
@@ -375,15 +418,15 @@ def build_screening_chain(*, streaming: bool = False):
     return prompt | _build_llm(streaming=streaming) | StrOutputParser()
 
 
-def stream_semantic_screening(llm_payload: Dict[str, Any]) -> None:
+@traceable(name="stage-3-semantic-screening", run_type="chain")
+def stream_semantic_screening(llm_payload: Dict[str, Any]) -> Dict[str, Any]:
     """流式输出阶段三思考过程与精筛结果（NDJSON 事件）。"""
     mode = os.getenv("AGENT_STAGE3_MODE", "oneshot").strip().lower()
     if mode == "agent":
         try:
             from agent.decision_agent import run_decision_agent
 
-            run_decision_agent(llm_payload)
-            return
+            reviewers = run_decision_agent(llm_payload)
         except Exception as exc:
             emit(
                 "stage3_thinking",
@@ -395,11 +438,24 @@ def stream_semantic_screening(llm_payload: Dict[str, Any]) -> None:
                     },
                 },
             )
+            reviewers = _stream_oneshot_screening(llm_payload)
+    else:
+        reviewers = _stream_oneshot_screening(llm_payload)
 
-    _stream_oneshot_screening(llm_payload)
+    run = get_current_run_tree()
+    result = {"reviewers": reviewers}
+    emit(
+        "stage3_done",
+        {
+            **result,
+            "langsmith_run_id": str(run.id) if run else "",
+            "langsmith_trace_id": str(run.trace_id) if run else "",
+        },
+    )
+    return result
 
 
-def _stream_oneshot_screening(llm_payload: Dict[str, Any]) -> None:
+def _stream_oneshot_screening(llm_payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     """单次 LLM JSON 精筛（原阶段三实现）。"""
     emit(
         "stage3_thinking",
@@ -428,20 +484,30 @@ def _stream_oneshot_screening(llm_payload: Dict[str, Any]) -> None:
     parsed = ScreeningOutput(reviewers=normalized_reviewers)
     _to_recommendations(parsed)
 
+    selected_names = "、".join(item.name for item in parsed.reviewers)
     emit(
-        "stage3_done",
+        "stage3_thinking",
         {
-            "reviewers": [
-                _merge_reviewer_profile(
-                    item,
-                    _resolve_candidate(
-                        candidates,
-                        candidate_id=item.candidate_id,
-                        name=item.name,
-                    ),
-                )
-                for item in parsed.reviewers
-                if item.name.strip()
-            ],
+            "thinking": {
+                "summary": (
+                    "### 筛选结论\n\n"
+                    f"已比较 {len(candidates)} 位候选人的研究方向、关键词重合度与近期论文，"
+                    "以语义契合度为主、活跃度为同等条件下的排序参考。\n\n"
+                    f"最终入选：{selected_names}。每位候选人的具体匹配依据见下方推荐理由。"
+                ),
+            },
         },
     )
+
+    return [
+        _merge_reviewer_profile(
+            item,
+            _resolve_candidate(
+                candidates,
+                candidate_id=item.candidate_id,
+                name=item.name,
+            ),
+        )
+        for item in parsed.reviewers
+        if item.name.strip()
+    ]

@@ -7,7 +7,16 @@ from agent.chain import ReviewerItem, validate_and_normalize_reviewers
 from agent.decision_agent import _select_tool_calls
 from agent.scoring import enriched_to_llm_dict
 from agent.tools import fetch_author_info_with_memory
-from agent.types import EnrichedCandidate
+from agent.types import EnrichedCandidate, parse_reviewer
+
+
+class ReviewerParsingTests(unittest.TestCase):
+    def test_parses_cscd_paper_count_for_stage1(self) -> None:
+        candidate = parse_reviewer(
+            {"id": "1", "authorName": "张三", "numAllpaper": "17"}
+        )
+
+        self.assertEqual(candidate.pubs_last_5_years, 17)
 
 
 def _candidate(candidate_id: str, name: str, email: str) -> dict:

@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
 
+from langsmith import traceable
+
 from agent.emit import emit
 from agent.filters import filter_coi, parse_keywords, select_highest_overlap
 from agent.tools import fetch_reviewers_with_memory
@@ -226,12 +228,14 @@ def run_stage1_from_candidates(
     }
 
 
+@traceable(name="stage-1-recall-and-filter", run_type="chain")
 def run_stage1(paper: PaperInput, api_code: Optional[str] = None) -> Dict[str, Any]:
     """阶段一：拉取候选人 → COI 熔断 → overlap 阈值筛选（可截断 Top N）。"""
     all_candidates = fetch_reviewers(paper.keywords, api_code)
     return run_stage1_from_candidates(paper, all_candidates)
 
 
+@traceable(name="stage-2-publication-enrichment", run_type="chain")
 def run_stage2(
     candidates: List[ReviewerCandidate],
     api_code: Optional[str] = None,

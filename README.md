@@ -76,6 +76,10 @@ ApiCode 过期时会自动重新获取并重试。
 | `CSCD_USER` / `CSCD_PASSWORD` | 自动获取 ApiCode |
 | `MINIMAX_API_KEY` | MiniMax API Key |
 | `MINIMAX_MODEL` | 默认 `MiniMax-M3` |
+| `LLM_PROVIDER` | `minimax`、`tokenhub` 或 `openai` |
+| `OPENAI_BASE_URL` / `LLM_MODEL` | OpenAI 兼容服务地址及模型名；方舟 Coding Plan 可用 `ark-code-latest` |
+| `LANGSMITH_API_KEY` | LangSmith Trace 密钥（选填） |
+| `LANGSMITH_PROJECT` | LangSmith 项目名，默认 `cscd-reviewer-agent` |
 | `MEMORY_DB_PATH` | 长期记忆数据库路径 |
 | `AGENT_RECENT_PAPER_YEARS` | 阶段二拉取近 N 年论文，默认 3 |
 | `CSCD_SEARCH_ARTICLES_MAX_PER_SEC` | searchArticles 限流，默认 3/秒 |

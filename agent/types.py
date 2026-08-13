@@ -21,12 +21,12 @@ class ReviewerCandidate:
     org: str
     email: str
     hindex: float
+    pubs_last_5_years: int = 0
     research_keywords: List[str] = field(default_factory=list)
     subject: str = ""
     position: str = ""
     resume: str = ""
     overlap_score: float = 0.0
-    pubs_last_5_years: int | None = None
 
 
 @dataclass
@@ -61,35 +61,28 @@ def reviewer_to_dict(candidate: ReviewerCandidate) -> Dict[str, Any]:
         "org": candidate.org,
         "email": candidate.email,
         "hindex": candidate.hindex,
+        "pubs_last_5_years": candidate.pubs_last_5_years,
         "research_keywords": candidate.research_keywords,
         "subject": candidate.subject,
         "position": candidate.position,
         "resume": candidate.resume,
         "overlap_score": candidate.overlap_score,
-        "pubs_last_5_years": candidate.pubs_last_5_years,
     }
 
 
 def reviewer_from_dict(data: Dict[str, Any]) -> ReviewerCandidate:
-    pubs_raw = data.get("pubs_last_5_years")
-    try:
-        pubs_last_5 = (
-            int(pubs_raw) if pubs_raw not in (None, "", "null") else None
-        )
-    except (TypeError, ValueError):
-        pubs_last_5 = None
     return ReviewerCandidate(
         id=str(data.get("id") or ""),
         name=str(data.get("name") or "").strip(),
         org=str(data.get("org") or "").strip(),
         email=str(data.get("email") or "").strip(),
         hindex=float(data.get("hindex") or 0.0),
+        pubs_last_5_years=int(float(data.get("pubs_last_5_years") or 0)),
         research_keywords=list(data.get("research_keywords") or []),
         subject=str(data.get("subject") or "").strip(),
         position=str(data.get("position") or "").strip(),
         resume=str(data.get("resume") or "").strip(),
         overlap_score=float(data.get("overlap_score") or 0.0),
-        pubs_last_5_years=pubs_last_5,
     )
 
 
@@ -113,14 +106,15 @@ def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
     except (TypeError, ValueError):
         hindex = 0.0
 
-    # CSCD getPeerReviewers：numAllpaper 为近 5 年发文量
-    pubs_raw = raw.get("numAllpaper")
+    papers_raw = raw.get("numAllpaper")
     try:
-        pubs_last_5 = (
-            int(float(pubs_raw)) if pubs_raw not in (None, "", "null") else None
+        pubs_last_5_years = (
+            int(float(papers_raw))
+            if papers_raw not in (None, "", "null")
+            else 0
         )
     except (TypeError, ValueError):
-        pubs_last_5 = None
+        pubs_last_5_years = 0
 
     return ReviewerCandidate(
         id=str(raw.get("id") or ""),
@@ -128,9 +122,9 @@ def parse_reviewer(raw: Dict[str, Any]) -> ReviewerCandidate:
         org=str(raw.get("org") or "").strip(),
         email=str(raw.get("email") or "").strip(),
         hindex=hindex,
+        pubs_last_5_years=pubs_last_5_years,
         research_keywords=keywords,
         subject=str(raw.get("subject") or "").strip(),
         position=str(raw.get("position") or "").strip(),
         resume=_normalize_resume(raw.get("resume")),
-        pubs_last_5_years=pubs_last_5,
     )

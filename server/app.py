@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from langsmith import Client
 
 from agent.author_pubs import fetch_author_pub_stats
 from agent.keyword_refine import refine_keywords
@@ -26,6 +27,7 @@ from server.schemas import (
     RecommendRequest,
     RefineKeywordsRequest,
     RefineKeywordsResponse,
+    ReviewerCopyFeedbackRequest,
 )
 
 logger = get_logger("api")
@@ -228,6 +230,29 @@ def recommend_reviewers(body: RecommendRequest) -> StreamingResponse:
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+@app.post("/api/v1/feedback/reviewer-copy", tags=["feedback"])
+def record_reviewer_copy(body: ReviewerCopyFeedbackRequest) -> dict[str, bool]:
+    """记录最终推荐审稿人被复制，即编辑认为候选人可邀请。"""
+    try:
+        Client().create_feedback(
+            run_id=body.langsmith_run_id,
+            trace_id=body.langsmith_trace_id or None,
+            key="reviewer_copied",
+            score=1,
+            value={
+                "candidate_id": body.candidate_id,
+                "candidate_name": body.candidate_name,
+                "candidate_rank": body.candidate_rank,
+                "copy_type": body.copy_type,
+            },
+            comment="复制审稿人信息，视为可邀请",
+        )
+    except Exception as exc:
+        logger.exception("reviewer copy feedback failed")
+        raise HTTPException(status_code=502, detail="复制反馈记录失败") from exc
+    return {"ok": True}
 
 
 if WEB_DIR.is_dir():

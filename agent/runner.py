@@ -6,6 +6,8 @@ import queue
 import threading
 from typing import Any, Dict, Iterator
 
+from langsmith import traceable
+
 from agent.chain import stream_semantic_screening
 from agent.emit import clear_emit_sink, emit, set_emit_sink
 from agent.pipeline import build_llm_payload, run_stage1, run_stage2
@@ -23,6 +25,7 @@ def iter_agent_events(paper: PaperInput) -> Iterator[Dict[str, Any]]:
     def sink(payload: Dict[str, Any]) -> None:
         event_queue.put(payload)
 
+    @traceable(name="reviewer-recommendation", run_type="chain")
     def worker() -> None:
         token = set_emit_sink(sink)
         try:

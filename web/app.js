@@ -8,6 +8,7 @@ const ENDPOINTS = {
   recommend: `${API_BASE}/api/v1/recommend/reviewers`,
   refineKeywords: `${API_BASE}/api/v1/keywords/refine`,
   authorPubs: `${API_BASE}/api/v1/authors/publications/stats`,
+  reviewerCopyFeedback: `${API_BASE}/api/v1/feedback/reviewer-copy`,
 };
 
 const ROLE_COLORS = {
@@ -63,6 +64,8 @@ let abortController = null;
 let pendingPayload = null;
 let activeFilter = "stage1";
 let lastReviewers = [];
+let activeStage3RunId = "";
+let activeTraceId = "";
 let lastStage1Experts = [];
 /** @type {"overlap" | "pubs5" | "hindex"} */
 let stage1SortBy = "overlap";
@@ -837,7 +840,7 @@ function renderResult(reviewers) {
       thinkingPanel.classList.add("hidden");
     } else {
       thinkingPanel.classList.remove("hidden");
-      setBotThinkingCollapsed(true);
+      setBotThinkingCollapsed(false);
     }
   }
 
@@ -886,6 +889,27 @@ async function copyText(text, button, { successLabel = "已复制", toastMessage
   }
   if (toastMessage) showCopyToast(toastMessage);
   return true;
+}
+
+async function trackReviewerCopy(reviewer, index, copyType) {
+  if (!activeStage3RunId || !reviewer?.name) return;
+  try {
+    await fetch(ENDPOINTS.reviewerCopyFeedback, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        langsmith_run_id: activeStage3RunId,
+        langsmith_trace_id: activeTraceId,
+        candidate_id: reviewer.candidate_id || reviewer.id || "",
+        candidate_name: reviewer.name,
+        candidate_rank: index + 1,
+        copy_type: copyType,
+      }),
+      keepalive: true,
+    });
+  } catch (err) {
+    console.warn("复制反馈上报失败", err);
+  }
 }
 
 function showCopyToast(message) {
@@ -974,6 +998,8 @@ function renderError(message, stage = "stage1") {
 
 function resetUI() {
   lastReviewers = [];
+  activeStage3RunId = "";
+  activeTraceId = "";
   lastStage1Experts = [];
   stage2Progress.length = 0;
   stage3ThinkingRaw = "";
@@ -1182,6 +1208,8 @@ function handleEvent(event) {
       break;
 
     case "stage3_done":
+      activeStage3RunId = event.langsmith_run_id || "";
+      activeTraceId = event.langsmith_trace_id || "";
       renderResult(event.reviewers || []);
       setConnectionStatus("ok", "推荐完成");
       break;
@@ -1811,18 +1839,20 @@ stage3Body.addEventListener("click", async (e) => {
     const index = Number(copyAllBtn.dataset.index);
     const reviewer = lastReviewers[index];
     if (!reviewer) return;
-    await copyText(formatExpertCopyText(reviewer), copyAllBtn, {
+    const copied = await copyText(formatExpertCopyText(reviewer), copyAllBtn, {
       successLabel: "已复制全部",
       toastMessage: "全部信息已经复制到粘贴板",
     });
+    if (copied) void trackReviewerCopy(reviewer, index, "all");
     return;
   }
 
   const copyBtn = e.target.closest(".result-copy-email-btn");
   if (copyBtn) {
     const index = Number(copyBtn.dataset.index);
-    const email = lastReviewers[index]?.email;
-    await copyText(email, copyBtn);
+    const reviewer = lastReviewers[index];
+    const copied = await copyText(reviewer?.email, copyBtn);
+    if (copied) void trackReviewerCopy(reviewer, index, "email");
   }
 });
 

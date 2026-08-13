@@ -103,7 +103,7 @@ def _agent_temperature() -> float:
 def run_decision_agent(
     llm_payload: Dict[str, Any],
     api_code: Optional[str] = None,
-) -> None:
+) -> List[Dict[str, Any]]:
     """Agent 决策：工具循环 → submit_reviewers → stage3_done。"""
     session_code = (api_code or "").strip() or None
     candidates: List[Dict[str, Any]] = list(llm_payload.get("candidates") or [])
@@ -348,20 +348,15 @@ def run_decision_agent(
     if not submitted_reviewers:
         raise ValueError("Agent 未在步数限制内成功调用 submit_reviewers")
 
-    emit(
-        "stage3_done",
-        {
-            "reviewers": [
-                _merge_reviewer_profile(
-                    item,
-                    _resolve_candidate(
-                        candidates,
-                        candidate_id=item.candidate_id,
-                        name=item.name,
-                    ),
-                )
-                for item in submitted_reviewers
-                if item.name.strip()
-            ],
-        },
-    )
+    return [
+        _merge_reviewer_profile(
+            item,
+            _resolve_candidate(
+                candidates,
+                candidate_id=item.candidate_id,
+                name=item.name,
+            ),
+        )
+        for item in submitted_reviewers
+        if item.name.strip()
+    ]

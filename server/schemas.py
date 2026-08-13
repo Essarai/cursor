@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,15 @@ class RecommendRequest(BaseModel):
     abstract: str = Field(default="", description="论文摘要（选填）")
     author_org: str = Field(default="", description="原作者机构（选填，触发 COI 熔断）")
     extra: str = Field(default="", description="补充说明")
+
+
+class ReviewerCopyFeedbackRequest(BaseModel):
+    langsmith_run_id: str = Field(..., min_length=1)
+    langsmith_trace_id: str = ""
+    candidate_id: str = ""
+    candidate_name: str = Field(..., min_length=1)
+    candidate_rank: int = Field(..., ge=1, le=5)
+    copy_type: Literal["email", "all"]
 
 
 class RefineKeywordsRequest(BaseModel):
